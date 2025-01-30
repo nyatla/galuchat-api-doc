@@ -48,6 +48,8 @@ export class WebApiAacProvider implements IReverseGeoCodeProvider<GaluchatAac>
             typeof (data as any).aacode === "number"){
                 if(data.aacode as number==0){
                     return data as GaluchatAac;
+                }else if(data.address==null){
+                    return data as GaluchatAac;
                 }else if(
                     typeof (data as any).address?.city === "string" &&
                     typeof (data as any).address?.prefecture === "string"

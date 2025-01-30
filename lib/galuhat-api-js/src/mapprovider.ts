@@ -1,4 +1,4 @@
-import {Point,Lonlat,  UnitInvs} from "./galuchat-typse"
+import {Point,Lonlat,  UnitInvs,GsiBox} from "./galuchat-typse"
 import {DEFALUT_ENDPOINT,MAPSET_TABLE} from "./appdef"
 
 
@@ -22,11 +22,25 @@ export interface IMapProvider{
      * マップセットの名前を返す
      */
     readonly mapset:string;
+    /**
+     * マップの解像度情報
+     */
+    readonly unit_invs:UnitInvs
+
 }
 
 export class GaluchatMap {
+    /**
+     * 中心位置
+     */
     public readonly center: Lonlat;
+    /**
+     * ドットピッチの逆数。1/unitinv
+     */
     public readonly unitinvs: UnitInvs;
+    /**
+     * ビットマップオブジェクト
+     */
     public readonly bitmap: ImageBitmap;
 
     /**
@@ -58,38 +72,36 @@ export class GaluchatMap {
         return this.bitmap.height;
     }
     /**
-     * 画像の左下ピクセルが所属する経緯度
+     * 経緯度マップでの矩形
      */
-    get leftBottomLatLon():Lonlat{
+    get llbox():GsiBox{
         const uinv=this.unitinvs
-        return new Lonlat(
-            (this.center.lon-this.width*uinv.x/2),
-            (this.center.lat-this.height*uinv.y/2)
-        );
+        const clon=this.center.lon
+        const clat=this.center.lat
+        const hw=this.width*uinv.x/2
+        const hh=this.height*uinv.x/2
+        return new GsiBox(clat+hh,clat-hh,clon-hw,clon+hw)
     }
     /**
-     * 画像の座標を経緯度に変換
+     * 画像の座標を経緯度に変換する。
+     * ピクセル中心がunit経緯度であることに注意
      */
     point2Lonlat(x:number,y:number):Lonlat{
         const uinv=this.unitinvs
         const left_lon=Math.round(this.center.lon*uinv.x-this.width/2)
         const bottom_lat=Math.round(this.center.lat*uinv.y-this.height/2)
-
-
-
-        // return new Lonlat(lbll.lon,lbll.lat);
         return new Lonlat(
-            (x+left_lon)/uinv.x,
-            (this.bitmap.height-1-y+bottom_lat)/uinv.y
+            (x+0.5+left_lon)/uinv.x,
+            (this.bitmap.height-1-y+0.5+bottom_lat)/uinv.y
         );
     }
     /**
      * 経緯度を画像の座標系に変換。範囲外の数値になることもあるよ。
      */
-    Lonlat2Point(lon:number,lat:number):Point{
-        const lbll=this.leftBottomLatLon;
+    lonlat2Point(lon:number,lat:number):Point{
+        const lbll=this.llbox;
         const unitinv=this.unitinvs
-        return new Point(Math.round((lon-lbll.lon)*unitinv.x),this.height-1-Math.round((lat-lbll.lat)*unitinv.y))
+        return new Point(Math.round((lon-lbll.south)*unitinv.x),this.height-1-Math.round((lat-lbll.west)*unitinv.y))
     }
     /**
      * イミュータブルなデータクラスのインスタンスを変えることなく
@@ -119,7 +131,7 @@ export class WebApiMapProvider implements IMapProvider
 
         
     public readonly mapset:string
-    private readonly unit_invs:UnitInvs
+    public readonly unit_invs:UnitInvs
     constructor(mapset_name:string,endpoint:string=DEFALUT_ENDPOINT){
         if((mapset_name in MAPSET_TABLE)==false){
             throw new Error(`Invalid mapset name:${mapset_name}`);

@@ -1,8 +1,7 @@
 
 import {Lonlat,Point, UnitInvs} from "./galuchat-typse"
 import {IMapProvider,GaluchatMap, MapOptions} from "./mapprovider"
-import {GaluchatAac,WebApiAacProvider} from "./geocodeprovider"
-import {DEFALUT_ENDPOINT,MAPSET_TABLE} from "./appdef"
+import {GaluchatAac,WebApiAacProvider,WebApiJccProvider,GaluchatJcc} from "./geocodeprovider"
 
 
 
@@ -36,7 +35,10 @@ export class SimpleMapComponent extends EventTarget {
     protected last_options:MapOptions|undefined=undefined;
     protected canvas: HTMLCanvasElement;
     protected _clickHandler: EventListener;
-    protected current_result:GaluchatMap|undefined;
+    /**
+     * 現在表示中のマップ
+     */
+    public current_result:GaluchatMap|undefined;
 
     constructor(element: HTMLElement, mapProvider: IMapProvider)
     {
@@ -89,7 +91,7 @@ export class SimpleMapComponent extends EventTarget {
      * @param provider 
      * @returns 
      */
-    public async switchMapProvider(provider:IMapProvider){
+    public async switchMapProvider(provider:IMapProvider,center:Lonlat|undefined=undefined){
         const old=this.mapProvider
         try{
             this.mapProvider=provider        
@@ -97,7 +99,8 @@ export class SimpleMapComponent extends EventTarget {
             if(cr==undefined){
                 return;
             }
-            this.update(cr!.center.lon,cr!.center.lat,this.last_options)
+            const c=center?center:cr.center
+            this.update(c.lon,c.lat,this.last_options)
         }catch{
             this.mapProvider=old
             console.error("can not switch map provider")
@@ -117,6 +120,7 @@ export class SimpleMapComponent extends EventTarget {
         this.element.removeEventListener("click", this._clickHandler);
         this.resizeObserver.disconnect();
     }
+
 }
 
 
@@ -147,21 +151,65 @@ export class ZoomInMapComponent extends SimpleMapComponent {
         this._wheelHandler = this.handleWheel.bind(this);
         element.addEventListener("wheel",this._wheelHandler);
     }
-    public async zoomIn():Promise<boolean>
+    /**
+     * 地図上の点を中心に
+     * @param pos 
+     * @returns 
+     */
+    public async zoomOut(pos:Point|undefined=undefined)
     {
-        if(this.current_map_rovider==0){
+        if(this.current_map_rovider==0 || this.current_result==null){
             return false
         }
-        this.current_map_rovider-=1
-        await this.switchMapProvider(this.map_providers[this.current_map_rovider])
+        const mps=this.map_providers
+        //スケールの計算
+        const new_map=mps[this.current_map_rovider-1]
+        const old_map=mps[this.current_map_rovider]
+        this.current_map_rovider-=1      
+        var lonlat:Lonlat|undefined=undefined
+
+        if(pos!=undefined){
+            // const scale=new UnitInvs(new_map.unit_invs.x/old_map.unit_invs.x,new_map.unit_invs.y/old_map.unit_invs.y)
+            //LatLonへ変換
+            const ll=this.current_result.point2Lonlat(pos.x,pos.y)
+            const l0=this.current_result.point2Lonlat(0,0)
+            //起点変換
+            const os=old_map.unit_invs
+            const ns=new_map.unit_invs        
+            const x=((ns.x-os.x)*ll.lon+os.x*l0.lon)/ns.x+this.current_result.width/2/ns.x
+            const y=((ns.y-os.y)*ll.lat+os.y*l0.lat)/ns.y-this.current_result.height/2/ns.y
+            // console.log("ZI",this.current_result.center,"->",[x,y])
+            lonlat=new Lonlat(x,y)
+        }
+        await this.switchMapProvider(new_map,lonlat)
+        // await this.switchMapProvider(new_map)
         return true
     }
-    public async zoomOut(){
-        if(this.current_map_rovider>=this.map_providers.length-1){
+    public async zoomIn(pos:Point|undefined=undefined){
+        if(this.current_map_rovider>=this.map_providers.length-1|| this.current_result==null){
             return false
         }
-        this.current_map_rovider+=1
-        await this.switchMapProvider(this.map_providers[this.current_map_rovider])
+        const mps=this.map_providers
+        //スケールの計算
+        const new_map=mps[this.current_map_rovider+1]
+        const old_map=mps[this.current_map_rovider]
+        this.current_map_rovider+=1        
+        var lonlat:Lonlat|undefined=undefined
+
+        if(pos!=undefined){
+            // const scale=new UnitInvs(new_map.unit_invs.x/old_map.unit_invs.x,new_map.unit_invs.y/old_map.unit_invs.y)
+            //LatLonへ変換
+            const ll=this.current_result.point2Lonlat(pos.x,pos.y)
+            const l0=this.current_result.point2Lonlat(0,0)
+            //起点変換
+            const os=old_map.unit_invs
+            const ns=new_map.unit_invs        
+            const x=((ns.x-os.x)*ll.lon+os.x*l0.lon)/ns.x+this.current_result.width/2/ns.x
+            const y=((ns.y-os.y)*ll.lat+os.y*l0.lat)/ns.y-this.current_result.height/2/ns.y
+            // console.log("ZI",this.current_result.center,"->",[x,y])
+            lonlat=new Lonlat(x,y)
+        }
+        await this.switchMapProvider(new_map,lonlat)
         return true
     }
     private handleWheel(event: Event) {
@@ -169,11 +217,15 @@ export class ZoomInMapComponent extends SimpleMapComponent {
         if(this.mouse_dlg_start){
            return; //マウスのドラッグ操作中は何もしない
         }
+        const rect = this.element.getBoundingClientRect();
+        const pos=new Point(e.clientX! - rect.left,e.clientY! - rect.top);        
         if (e.deltaY > 0) {
-            this.zoomIn()
+            this.zoomOut(pos)
         } else {
-            this.zoomOut()
+            this.zoomIn(pos)
         }
+        e.preventDefault();   // スクロールを無効化
+        e.stopPropagation();  // 伝播を防ぐ
     }
 
     private mouse_dlg_start:Point|undefined=undefined //ドラッグの開始点
@@ -233,10 +285,10 @@ export class ZoomInMapComponent extends SimpleMapComponent {
 }
 
 export class AacSelectedEvent extends CustomEvent<GaluchatAac> {
-    public readonly aacode:GaluchatAac
+    public readonly aac:GaluchatAac
     constructor(aacode:GaluchatAac) {
         super("aacSelected")
-        this.aacode=aacode
+        this.aac=aacode
     }
 }
 /**
@@ -251,17 +303,50 @@ export class AAcSelectMapComponent extends ZoomInMapComponent {
                 const ap=new WebApiAacProvider(this.mapProvider.mapset)
                 ap.getCode(e.lonlat.lon,e.lonlat.lat).then((raac)=>{
                     if(raac.aacode==0){
-                        this.update(e.lonlat.lon,e.lonlat.lat,undefined).then(()=>{
-                            this.dispatchEvent(new AacSelectedEvent(raac));
-                        });
+                        this.dispatchEvent(new AacSelectedEvent(raac));
                     }else if(this.selected_aac && raac.aacode==this.selected_aac.aacode){
                         //ntd
+                    // }else if(raac.address==null){
                     }else{
                         this.update(e.lonlat.lon,e.lonlat.lat,new MapOptions([raac.aacode])).then(()=>{
                             this.dispatchEvent(new AacSelectedEvent(raac));
                         });
                     }
                     this.selected_aac=raac
+                });
+            }
+        });
+    }
+     
+}
+
+
+export class JccSelectedEvent extends CustomEvent<GaluchatAac> {
+    public readonly jcc:GaluchatJcc
+    constructor(jcc:GaluchatJcc) {
+        super("jccSelected")
+        this.jcc=jcc
+    }
+}
+export class JccSelectMapComponent extends ZoomInMapComponent {
+    private selected_jcc:GaluchatJcc|null=null
+    constructor(element: HTMLElement, mapProviders: IMapProvider[],default_map_index:number=0){
+        super(element,mapProviders,default_map_index=default_map_index)
+        this.addEventListener("dblclick",(e)=>{
+            if(e instanceof MapMouseEvent){
+                const ap=new WebApiJccProvider(this.mapProvider.mapset)
+                ap.getCode(e.lonlat.lon,e.lonlat.lat).then((rjcc)=>{
+                    if(rjcc.aacode==0){
+                        this.dispatchEvent(new JccSelectedEvent(rjcc));
+                    }else if(this.selected_jcc && rjcc.aacode==this.selected_jcc.aacode){
+                        //ntd
+                    // }else if(raac.address==null){
+                    }else{
+                        this.update(e.lonlat.lon,e.lonlat.lat,new MapOptions([rjcc.aacode])).then(()=>{
+                            this.dispatchEvent(new JccSelectedEvent(rjcc));
+                        });
+                    }
+                    this.selected_jcc=rjcc
                 });
             }
         });

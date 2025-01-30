@@ -1,4 +1,4 @@
-export * from "./sample.ts";
+export * from "./mapcomponents.ts";
 
 // export const galuchatapi_js={GaluchatWebApi};
 // export class A{

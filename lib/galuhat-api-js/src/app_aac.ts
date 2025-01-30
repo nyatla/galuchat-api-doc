@@ -1,4 +1,4 @@
-import * as f1 from "./sample.ts";
+import * as f1 from "./mapcomponents.ts";
 import * as f2 from "./mapprovider.ts";
 import * as f3 from "./geocodeprovider.ts"
 var GaluchatApiJs={
@@ -15,7 +15,7 @@ window.onload = function() {
     new GaluchatApiJs.WebApiMapProvider("ma10000")
  ]
  var cmp=new GaluchatApiJs.AAcSelectMapComponent(document.getElementById("main")!,mps);
- cmp.update(134.72,35.6);
+ cmp.update(140.0289933,35.6837434);
  
  cmp.addEventListener('click',(e:Event)=>{
     if(e instanceof GaluchatApiJs.MapMouseEvent){ //OK
@@ -32,11 +32,13 @@ window.onload = function() {
 cmp.addEventListener('aacSelected',(e:Event)=>{
     if(e instanceof GaluchatApiJs.AacSelectedEvent){ //OK
         const tag=document.getElementById("result")! as HTMLInputElement;
-        console.log(e.aacode)
-        if(e.aacode.aacode==0){
+        console.log(e.aac)
+        if(e.aac.aacode==0){
             tag.value=""
+        }else if(e.aac.address==null){
+            tag.value=`${e.aac.aacode} 所属不明地`;
         }else{
-            tag.value=`${e.aacode.aacode} ${e.aacode.address.prefecture} ${e.aacode.address.city}`;
+            tag.value=`${e.aac.aacode} ${e.aac.address.prefecture} ${e.aac.address.city}`;
         }
 
         // cmp.update(e.lonlat.lon, e.lonlat.lat);
@@ -44,7 +46,8 @@ cmp.addEventListener('aacSelected',(e:Event)=>{
     }
     // console.log("e3s3ss");
 });
-
+document.getElementById("zoomin")?.addEventListener("click",()=>{cmp.zoomIn()})
+document.getElementById("zoomout")?.addEventListener("click",()=>{cmp.zoomOut()})
  //var img=new GaluchatApiJs.WebApiMapProvider();
 // img.getMap(134.72,35.6,100,100,100).then();
 }
