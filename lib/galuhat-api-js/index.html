@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GaluchatMAP</title>
+    <style>
+      body {
+        display: flex;
+        flex-direction: column;
+        /* justify-content: center; */
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+      }
+      #result {
+        font-size: 1.5rem;
+        width:584px;
+        padding: 8px;
+        
+      }
+      #main {
+        width: 600px;
+        height: 600px;
+        border: 1px solid black;
+      }
+      .controls {
+        margin-top: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>行政区域コードマップ</h1>
+    <hr/>
+    <div id="main"></div>
+    <div class="controls">
+      <button id="in">+</button>
+      <button id="iout">-</button>
+    </div>
+    <div>
+      <input id="result" type="text" readonly>
+    </div>
+    <script type="module" src="/src/app.ts"></script>
+  </body>
+</html>
