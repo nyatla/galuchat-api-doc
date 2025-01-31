@@ -4,6 +4,7 @@ import { resolve } from 'path';
 const IS_DEV=true
 
 export default defineConfig({
+  base: './', // ← これを設定すると相対パスになる
   build:IS_DEV?{
       rollupOptions: {
         input:{

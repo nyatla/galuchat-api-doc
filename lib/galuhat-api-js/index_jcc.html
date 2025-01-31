@@ -1,60 +1,32 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>GaluchatMAP</title>
-    <style>
-      body {
-        display: flex;
-        flex-direction: column;
-        /* justify-content: center; */
-        height: 100vh;
-        margin: .5em;
-      }
-      button{
-        width:3em;
-        height:3em;
-        margin: 0.5em;
-      }
-      #p1{
-        align-items: center;
-      }
-
-      #result {
-        font-size: 1.5rem;
-        width:584px;
-        padding: 8px;
-        
-      }
-      #main {
-        width: 600px;
-        height: 600px;
-        border: 1px solid black;
-      }
-      .controls {
-        margin-top: 10px;
-      }
-    </style>
-  </head>
-  <body>
-    <h1>JARL市郡区コードマップ</h1>
-    <hr/>
-    <div id="p1">
-      <div id="main"></div>
-      <div class="controls">
-        <button id="zoomin">+</button>
-        <button id="zoomout">-</button>
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+    <title>JARL市郡区コードマップ</title>
+    <script type="module" src="/src/app_jcc.ts"></script>  
+</head>
+<body>
+    <div class="container">
+        <header class="title">JARL市郡区コードマップ</header>
+        <main class="map-container">
+            <div class="map-wrapper">
+                <div class="map" id="map"></div>
+                <div class="controls" style="position: absolute; top: 10px; right: 10px;">
+                    <button id="zoom-in">＋</button>
+                    <button id="zoom-out">－</button>
+                </div>
+                <input type="text" readonly id="info-box" class="info-box">
+            </div>
+        </main>
+        <footer class="notice">
+          <ul>
+            <li>国土交通省国土数値情報を加工・編集した地図情報を使用しています。<br/><a href="https://nlftp.mlit.go.jp/ksj/index.html">国土交通省国土数値情報ダウンロードサイト</a>
+            </li>
+            <li>munitable.csvを加工・編集した地図情報を使用しています。<br><a href="https://github.com/w-ockham/JCC-JCG-List/blob/master/LICENSE">w-ockham/JCC-JCG-List</a></li>
+          </ul>
+        </footer>    
+        <div class="notice">(c)2025 nyatla.jp</div>
       </div>
-      <div>
-        <input id="result" type="text" readonly>
-      </div>
-      <script type="module" src="/src/app_jcc.ts"></script>  
-    </div>
-    <ul id="footer">
-      <li>ドラッグで移動</li>
-      <li>ダブルクリックでその行政区域を表示</li>
-      <li>ホイール/ボタンでズーム</li>
-    </ul>
-  </body>
+</body>
 </html>

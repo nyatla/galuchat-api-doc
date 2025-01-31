@@ -1,5 +1,6 @@
 
-import {Lonlat,Point, UnitInvs} from "./galuchat-typse"
+import {debounce} from "./utils"
+import {Lonlat,Point} from "./galuchat-typse"
 import {IMapProvider,GaluchatMap, MapOptions} from "./mapprovider"
 import {GaluchatAac,WebApiAacProvider,WebApiJccProvider,GaluchatJcc} from "./geocodeprovider"
 
@@ -17,16 +18,20 @@ export class MapMouseEvent extends MouseEvent {
         this.lonlat=mapinfo.point2Lonlat(e.clientX! - rect.left,e.clientY! - rect.top);
     }
 }
-
+export class MapPointerEvent extends PointerEvent {
+    public readonly lonlat:Lonlat;//選択位置の経緯度
+    public readonly mapinfo:GaluchatMap;//選択位置の経緯度
+    constructor(event: Event, target:HTMLElement,mapinfo: GaluchatMap) {
+        super(event.type, event);
+        const e=event as PointerEvent
+        const rect = target.getBoundingClientRect();
+        this.lonlat=mapinfo.point2Lonlat(e.clientX! - rect.left,e.clientY! - rect.top);
+        this.mapinfo=mapinfo;
+    }
+}
 
 /**
- * クリック時の移動機能を備えたシンプルなマップコンポーネント
- * いくつかのイベントについてMapMouseEventイベントを返す。
- * @event click
- * @event mousemove
- * @event mouseup
- * @event mousedown
- * @event dblclick
+ * 表示機能を備えたコンポーネント。あとイベントの置き換え
  */
 export class SimpleMapComponent extends EventTarget {
     protected element: HTMLElement;
@@ -34,51 +39,91 @@ export class SimpleMapComponent extends EventTarget {
     private resizeObserver: ResizeObserver;
     protected last_options:MapOptions|undefined=undefined;
     protected canvas: HTMLCanvasElement;
-    protected _clickHandler: EventListener;
+    #_clickHandler: EventListener;
+    #_pointerHandler: EventListener;    
     /**
      * 現在表示中のマップ
      */
     public current_result:GaluchatMap|undefined;
+    #DEFAULT_LONLA=new Lonlat(140.030,35.683)
 
-    constructor(element: HTMLElement, mapProvider: IMapProvider)
+    constructor(element: HTMLElement, mapProvider: IMapProvider,initial_lonlat:Lonlat|undefined)
     {
         super();
         //要素の構築
         const c=document.createElement("canvas");
-        c.width = element.clientWidth;
-        c.height = element.clientHeight;
+        c.width=element.clientWidth
+        c.height=element.clientHeight
+        const debouncedResize = debounce((w:number,h:number) => {
+            if(w*h==0){return}
+            const cr=this.current_result
+            if(cr && (c.width!=w || c.height!=h)){
+                c.width = w;
+                c.height = h;
+                this.update(cr.center.lon,cr.center.lat)
+            }
+        }, 300);
         this.canvas=c   
         element.appendChild(c);
-        //イベントバインド      
-        this._clickHandler = this.handleClick.bind(this);
+        //イベントバインド
+        this.#_pointerHandler = (event:Event)=>{
+            if(!this.current_result){
+                return;
+            }
+            this.dispatchEvent(new MapPointerEvent(event,this.element,this.current_result));            
+        }
+        for(let i of ["pointerup","pointerdown","pointermove"]){
+            element.addEventListener(i,this.#_pointerHandler)
+            // c.addEventListener(i,()=>{},true)//イベント発生するようにする。
+        }
 
-        // イベント監視のセットアップ
-        element.addEventListener("click",this._clickHandler);
-        element.addEventListener("mousemove",this._clickHandler);
-        element.addEventListener("mousedown",this._clickHandler);
-        element.addEventListener("mouseup",this._clickHandler);
-        element.addEventListener("dblclick",this._clickHandler);
+        this.#_clickHandler=(event: Event)=>{
+            if(!this.current_result){
+                return;
+            }
+            this.dispatchEvent(new MapMouseEvent(event,this.element,this.current_result));
+        }
+        for(let i of ["click","mousemove","mousedown","mouseup","dblclick"]){
+            element.addEventListener(i,this.#_clickHandler)
+            // c.addEventListener(i,()=>{},true)//イベント発生するようにする。
+        }
 
         // リサイズ監視のセットアップ
-        this.resizeObserver = new ResizeObserver((entries) => {
-            for (const entry of entries) {
-                const resizeEvent = new CustomEvent("resize", {
-                    detail: { width: entry.contentRect.width, height: entry.contentRect.height }
-                });
-                this.dispatchEvent(resizeEvent);
-            }
+        this.resizeObserver = new ResizeObserver(() => {
+            // for (const entry of entries) {
+            //     const resizeEvent = new CustomEvent("resize", {
+            //         detail: { width: entry.contentRect.width, height: entry.contentRect.height }
+            //     });
+            //     this.dispatchEvent(resizeEvent);
+            // }
+            debouncedResize(element.clientWidth,element.clientHeight);
+            console.log("resize")
         });
+        const init_ll=initial_lonlat?initial_lonlat:this.#DEFAULT_LONLA
+        //debouncedResize(element.clientWidth,element.clientHeight);
+
+        this.resizeObserver.observe(element);
         //リソースの初期化
         this.element = element;
         this.mapProvider = mapProvider;
         this.current_result=undefined;
+        this.update(init_ll.lon,init_ll.lat)
     }
     public async update(lon:number,lat:number,options:undefined|MapOptions=undefined){
         const width = this.element.clientWidth;
         const height = this.element.clientHeight;
         try {
-            const mapImage = await this.mapProvider.getMap(lon, lat, width, height,options?options:undefined);
-            mapImage.renderToCanvas(this.canvas.getContext("2d")!);
+            let mapImage
+            if(width*height==0){
+                //APIはサイズ0を作れないから。
+                const imageData = new ImageData(0, 0); // 0×0 の ImageData を作成
+                const bitmap = await createImageBitmap(imageData); // ImageBitmap を作成
+                mapImage=new GaluchatMap(lon,lat,this.mapProvider.unit_invs,options,bitmap)
+                return
+            }else{
+                mapImage = await this.mapProvider.getMap(lon, lat, width, height,options?options:undefined);
+                mapImage.renderToCanvas(this.canvas.getContext("2d")!);    
+            }
             this.last_options=options
             this.current_result=mapImage            
         } catch (error) {
@@ -107,24 +152,28 @@ export class SimpleMapComponent extends EventTarget {
         }
     }
 
-    protected handleClick(event: Event) {
-        if(!this.current_result){
-            return;
-        }
-        this.dispatchEvent(new MapMouseEvent(event,this.element,this.current_result));
-    }
+
+
     /**
      * クリーンアップ処理
      */
     public dispose() {
-        this.element.removeEventListener("click", this._clickHandler);
+        //めんどくさいからあとで！
+        // this.element.removeEventListener("click", this._clickHandler);
+        // this.element.removeEventListener("click", this._pointerHandler);
         this.resizeObserver.disconnect();
     }
 
 }
 
 
-
+export class PointMapEvent extends CustomEvent<Lonlat> {
+    public readonly lonlat:Lonlat
+    constructor(lonlat:Lonlat) {
+        super("pointmap")
+        this.lonlat=lonlat
+    }
+}
 /**
  * ズームイン/ズームアウト/ドラッグで移動のできるマップ。
  * 解像度変更はマップ切替
@@ -132,7 +181,8 @@ export class SimpleMapComponent extends EventTarget {
 export class ZoomInMapComponent extends SimpleMapComponent {
     private map_providers: IMapProvider[];   //
     private current_map_rovider:number;     //現在選択しているマッププロバイダ
-    private _wheelHandler: EventListener;
+    #_wheelHandler: EventListener;
+    #_pointerHandler: EventListener;     
     /**
      * 
      * @param element 
@@ -142,14 +192,94 @@ export class ZoomInMapComponent extends SimpleMapComponent {
      * 現在選択しているマッププロバイダ
      */
 
-    constructor(element: HTMLElement, mapProviders: IMapProvider[],default_map_index:number=0)
+    constructor(element: HTMLElement, mapProviders: IMapProvider[],default_map_index:number=0,initial_lonlat:Lonlat|undefined=undefined)
     {
-        super(element,mapProviders[default_map_index]);
+        super(element,mapProviders[default_map_index],initial_lonlat);
         this.map_providers=mapProviders
         this.current_map_rovider=default_map_index
-        //イベントバインド      
-        this._wheelHandler = this.handleWheel.bind(this);
-        element.addEventListener("wheel",this._wheelHandler);
+        //イベントバインド
+        class DlgInfo{
+            readonly start_time:number
+            readonly start_pos:Point
+            readonly start_lonlat:Lonlat
+            constructor(start_pos:Point,start_lonlat:Lonlat){
+                this.start_time=Date.now()
+                this.start_pos=start_pos
+                this.start_lonlat=start_lonlat
+            }
+            get ellapse():number{
+                return Date.now()-this.start_time
+            }
+        }      
+        let drg_info:DlgInfo|undefined=undefined //ドラッグの開始点
+        
+    
+
+        this.#_pointerHandler = (event:Event)=>{
+            const e=event as  MapPointerEvent;
+            let cr=e.mapinfo
+            switch(e.type){
+            case "pointerup":
+                if(!drg_info){
+                    break;
+                }
+                const x=e.clientX-drg_info.start_pos.x
+                const y=e.clientY-drg_info.start_pos.y
+                    if(x!=0 && y!=0){
+                    this.update(
+                        cr.center.lon-x/cr.unitinvs.x,
+                        cr.center.lat+y/cr.unitinvs.y,this.last_options)
+                }else if(drg_info.ellapse<1000){
+                    this.dispatchEvent(new PointMapEvent(drg_info.start_lonlat))
+
+                }
+
+                drg_info=undefined
+                break
+            case "pointerdown":
+                // alert(e.type)
+                // const touchCount = e.pointerType === 'touch' ? e.getCoalescedEvents().length : 0;
+                // alert(touchCount)
+                // if(e.pointerType=="touch" && touchCount>1){
+                //     //ズーム処理
+                // }else{
+                // }
+                //クリック|移動処理
+                drg_info=new DlgInfo(new Point(e.clientX,e.clientY),e.lonlat);
+                break
+            case "pointermove":
+                if(drg_info){
+                    const x=e.clientX-drg_info.start_pos.x
+                    const y=e.clientY-drg_info.start_pos.y
+                    if(x!=0 && y!=0){
+                        const ctx=this.canvas.getContext("2d")!;
+                        ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                        cr.renderToCanvas(ctx,x,y);
+                    }
+                }                
+                break
+            }
+        }
+        for(let i of ["pointerup","pointerdown","pointermove"]){
+            this.addEventListener(i,this.#_pointerHandler)
+        }
+
+        this.#_wheelHandler =(event: Event)=>{
+            const e= event as WheelEvent;
+            if(drg_info){
+               return; //マウスのドラッグ操作中は何もしない
+            }
+            const rect = this.element.getBoundingClientRect();
+            const pos=new Point(e.clientX! - rect.left,e.clientY! - rect.top);        
+            if (e.deltaY > 0) {
+                this.zoomOut(pos)
+            } else {
+                this.zoomIn(pos)
+            }
+            e.preventDefault();   // スクロールを無効化
+            e.stopPropagation();  // 伝播を防ぐ
+        }
+        element.addEventListener("wheel",this.#_wheelHandler);
     }
     /**
      * 地図上の点を中心に
@@ -212,75 +342,13 @@ export class ZoomInMapComponent extends SimpleMapComponent {
         await this.switchMapProvider(new_map,lonlat)
         return true
     }
-    private handleWheel(event: Event) {
-        const e= event as WheelEvent;
-        if(this.mouse_dlg_start){
-           return; //マウスのドラッグ操作中は何もしない
-        }
-        const rect = this.element.getBoundingClientRect();
-        const pos=new Point(e.clientX! - rect.left,e.clientY! - rect.top);        
-        if (e.deltaY > 0) {
-            this.zoomOut(pos)
-        } else {
-            this.zoomIn(pos)
-        }
-        e.preventDefault();   // スクロールを無効化
-        e.stopPropagation();  // 伝播を防ぐ
-    }
 
-    private mouse_dlg_start:Point|undefined=undefined //ドラッグの開始点
-    private mouse_dlg_unitinv:UnitInvs|undefined=undefined //ドラッグの開始点
+
     
-    protected override handleClick(event: Event) {
-        let cr=this.current_result
-        if(cr && event instanceof MouseEvent){
-            switch(event.type){
-                // case "dblclick":
-                //     const rect = this.element.getBoundingClientRect();
-                //     const lonlat=cr.point2Lonlat(event.clientX! - rect.left,event.clientY! - rect.top);
-                //     this.update(lonlat.lon,lonlat.lat)
-                //     break;
-                // case "dblclick":
-                //     const rect = this.element.getBoundingClientRect();
-                //     const lonlat=cr.point2Lonlat(event.clientX! - rect.left,event.clientY! - rect.top);
-                //     this.update(lonlat.lon,lonlat.lat)
-                //     break;
-                case "mouseup":
-                    if(this.mouse_dlg_start){
-                        const x=event.clientX-this.mouse_dlg_start.x
-                        const y=event.clientY-this.mouse_dlg_start.y
-                        if(x!=0 && y!=0){
-                            this.update(
-                                cr.center.lon-x/cr.unitinvs.x,
-                                cr.center.lat+y/cr.unitinvs.y,this.last_options)
-                        }
-
-                    }
-                    this.mouse_dlg_start=undefined
-                    break;
-                case "mousedown":
-                    this.mouse_dlg_start=new Point(event.clientX,event.clientY);
-                    this.mouse_dlg_unitinv
-                    break;
-                case "mousemove":
-                    if(this.mouse_dlg_start){
-                        const x=event.clientX-this.mouse_dlg_start.x
-                        const y=event.clientY-this.mouse_dlg_start.y
-                        if(x!=0 && y!=0){
-                            const ctx=this.canvas.getContext("2d")!;
-                            ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-                            cr.renderToCanvas(ctx,x,y);
-                        }
-
-                    }
-            }
-        }
-        super.handleClick(event);
-    }      
       
     public dispose() {
         super.dispose();
-        this.element.removeEventListener("wheel", this._wheelHandler);
+        this.element.removeEventListener("wheel", this.#_wheelHandler);
     }
 }
 
@@ -292,14 +360,14 @@ export class AacSelectedEvent extends CustomEvent<GaluchatAac> {
     }
 }
 /**
- * 選択した場所の
+ * 地域選択可能なマップ
  */
 export class AAcSelectMapComponent extends ZoomInMapComponent {
     private selected_aac:GaluchatAac|null=null
-    constructor(element: HTMLElement, mapProviders: IMapProvider[],default_map_index:number=0){
-        super(element,mapProviders,default_map_index=default_map_index)
-        this.addEventListener("dblclick",(e)=>{
-            if(e instanceof MapMouseEvent){
+    constructor(element: HTMLElement, mapProviders: IMapProvider[],default_map_index:number=0,initial_lonlat:Lonlat|undefined=undefined){
+        super(element,mapProviders,default_map_index=default_map_index,initial_lonlat=initial_lonlat)
+        this.addEventListener("pointmap",(e)=>{
+            if(e instanceof PointMapEvent){
                 const ap=new WebApiAacProvider(this.mapProvider.mapset)
                 ap.getCode(e.lonlat.lon,e.lonlat.lat).then((raac)=>{
                     if(raac.aacode==0){
@@ -308,7 +376,7 @@ export class AAcSelectMapComponent extends ZoomInMapComponent {
                         //ntd
                     // }else if(raac.address==null){
                     }else{
-                        this.update(e.lonlat.lon,e.lonlat.lat,new MapOptions([raac.aacode])).then(()=>{
+                        this.update(this.current_result!.center.lon,this.current_result!.center.lat,new MapOptions([raac.aacode])).then(()=>{
                             this.dispatchEvent(new AacSelectedEvent(raac));
                         });
                     }
@@ -330,10 +398,11 @@ export class JccSelectedEvent extends CustomEvent<GaluchatAac> {
 }
 export class JccSelectMapComponent extends ZoomInMapComponent {
     private selected_jcc:GaluchatJcc|null=null
-    constructor(element: HTMLElement, mapProviders: IMapProvider[],default_map_index:number=0){
-        super(element,mapProviders,default_map_index=default_map_index)
-        this.addEventListener("dblclick",(e)=>{
-            if(e instanceof MapMouseEvent){
+    constructor(element: HTMLElement, mapProviders: IMapProvider[],default_map_index:number=0,initial_lonlat:Lonlat|undefined=undefined){
+        super(element,mapProviders,default_map_index=default_map_index,initial_lonlat=initial_lonlat)
+        this.addEventListener("pointmap",(e)=>{
+            //マウスのみ
+            if(e instanceof PointMapEvent){
                 const ap=new WebApiJccProvider(this.mapProvider.mapset)
                 ap.getCode(e.lonlat.lon,e.lonlat.lat).then((rjcc)=>{
                     if(rjcc.aacode==0){
@@ -342,7 +411,7 @@ export class JccSelectMapComponent extends ZoomInMapComponent {
                         //ntd
                     // }else if(raac.address==null){
                     }else{
-                        this.update(e.lonlat.lon,e.lonlat.lat,new MapOptions([rjcc.aacode])).then(()=>{
+                        this.update(this.current_result!.center.lon,this.current_result!.center.lat,new MapOptions([rjcc.aacode])).then(()=>{
                             this.dispatchEvent(new JccSelectedEvent(rjcc));
                         });
                     }

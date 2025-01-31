@@ -42,6 +42,7 @@ export class GaluchatMap {
      * ビットマップオブジェクト
      */
     public readonly bitmap: ImageBitmap;
+    public readonly mapoptions: MapOptions|undefined;
 
     /**
      * コンストラクタで初期化する。
@@ -52,10 +53,11 @@ export class GaluchatMap {
      * @param unitinv - 解像度逆数
      * @param bitmap - 地図の画像データ
      */
-    constructor(center_lon: number, center_lat: number, unitinvs:UnitInvs,bitmap: ImageBitmap) {
+    constructor(center_lon: number, center_lat: number, unitinvs:UnitInvs,mapoprions:MapOptions|undefined,bitmap: ImageBitmap) {
         this.center=new Lonlat(center_lon,center_lat);
         this.unitinvs=unitinvs;
         this.bitmap = bitmap;
+        this.mapoptions=mapoprions
     }
 
     /**
@@ -103,16 +105,7 @@ export class GaluchatMap {
         const unitinv=this.unitinvs
         return new Point(Math.round((lon-lbll.south)*unitinv.x),this.height-1-Math.round((lat-lbll.west)*unitinv.y))
     }
-    /**
-     * イミュータブルなデータクラスのインスタンスを変えることなく
-     * 新しいインスタンスを返すメソッドの例。
-     * 
-     * @param newBitmap - 新しいImageBitmap
-     * @returns 新しいGaluchatGenMapResultインスタンス
-     */
-    withNewBitmap(newBitmap: ImageBitmap): GaluchatMap {
-        return new GaluchatMap(this.center.lon, this.center.lat, this.unitinvs,newBitmap);
-    }
+
     public renderToCanvas(ctx:CanvasRenderingContext2D,x:number=0,y:number=0) {
         ctx.drawImage(this.bitmap, x, y);
     }    
@@ -140,6 +133,8 @@ export class WebApiMapProvider implements IMapProvider
         this.mapset=mapset_name;
         this.unit_invs=MAPSET_TABLE[mapset_name];
     }
+    #last_requested_url:string|undefined
+    #last_map:GaluchatMap|undefined
     /**
      * 指定した経度・緯度に基づいて、画像データを取得するメソッド
      * 
@@ -152,19 +147,26 @@ export class WebApiMapProvider implements IMapProvider
     async getMap(lon: number, lat: number, width: number, height: number,options:MapOptions|undefined=undefined): Promise<GaluchatMap> {
         // APIエンドポイントへのURLを構築
         const url = `${this.endpoint}?lon=${lon}&lat=${lat}&size=${width},${height}&mapset=${this.mapset}${options?options.querySuffix:""}`;
-        console.log(url);
+        if(this.#last_requested_url==url && this.#last_map!=undefined){
+            console.log(`cached return:${url}`);//二重描画がでてるときにあるかもね
+            return this.#last_map
+        }
+        this.#last_requested_url=url
+        console.log(`get:${url}`);
 
         // GETリクエストを送信して画像データを取得
         const response = await fetch(url);
 
         if (!response.ok) {
+            this.#last_map=undefined
             throw new Error(`Failed to fetch map image: ${response.statusText}`);
         }
 
         // 画像データをArrayBufferとして取得し、それをImageBitmapとして変換
         const arrayBuffer = await response.arrayBuffer();
         const imageBitmap = await createImageBitmap(new Blob([arrayBuffer]));
+        this.#last_map=new GaluchatMap(lon,lat,this.unit_invs,options,imageBitmap);
 
-        return new GaluchatMap(lon,lat,this.unit_invs,imageBitmap);
+        return this.#last_map
     }
 }

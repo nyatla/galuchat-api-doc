@@ -1,5 +1,5 @@
 /**
- * デバウンス
+ * デバウンス 単位時間内で最後のイベントを実行
  * @param func 
  * @param delay 
  * @returns 
@@ -17,6 +17,7 @@ export function debounce<T extends (...args: any[]) => void>(
 
 /**
  * スロットリング
+ * デバウンス 単位時間内で最初のイベントを実行
  * @param func 
  * @param delay 
  * @returns 
