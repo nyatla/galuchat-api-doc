@@ -84,7 +84,12 @@ APIが生成する情報の元データは以下のものを使用していま�
    https://github.com/w-ockham/JCC-JCG-List/blob/master/LICENSE
 
 
+# デモ
 
+1. [行政区域コードマップ](https://nyatla.jp/galuchat-api-js/)
+2. [JARL市郡区コードマップ](https://nyatla.jp/galuchat-api-js/index_jcc.html)
+
+ソースは[lib](./lib/galuchat-api-js)にあります。
 
 
 # その他資料
