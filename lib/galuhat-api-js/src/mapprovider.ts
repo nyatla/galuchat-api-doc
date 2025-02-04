@@ -39,9 +39,9 @@ export class GaluchatMap {
      */
     public readonly unitinvs: UnitInvs;
     /**
-     * ビットマップオブジェクト
+     * ビットマップオブジェクト.サイズが0の場合はundefined
      */
-    public readonly bitmap: ImageBitmap;
+    public readonly bitmap?: ImageBitmap;
     public readonly mapoptions: MapOptions|undefined;
 
     /**
@@ -53,7 +53,7 @@ export class GaluchatMap {
      * @param unitinv - 解像度逆数
      * @param bitmap - 地図の画像データ
      */
-    constructor(center_lon: number, center_lat: number, unitinvs:UnitInvs,mapoprions:MapOptions|undefined,bitmap: ImageBitmap) {
+    constructor(center_lon: number, center_lat: number, unitinvs:UnitInvs,mapoprions:MapOptions|undefined,bitmap?: ImageBitmap) {
         this.center=new Lonlat(center_lon,center_lat);
         this.unitinvs=unitinvs;
         this.bitmap = bitmap;
@@ -64,14 +64,14 @@ export class GaluchatMap {
      * 画像の幅
      */
     get width(): number {
-        return this.bitmap.width;
+        return this.bitmap?this.bitmap.width:0;
     }
 
     /**
      * 画像の高さ
      */
     get height(): number {
-        return this.bitmap.height;
+        return this.bitmap?this.bitmap.height:0;
     }
     /**
      * 経緯度マップでの矩形
@@ -94,7 +94,7 @@ export class GaluchatMap {
         const bottom_lat=Math.round(this.center.lat*uinv.y-this.height/2)
         return new Lonlat(
             (x+0.5+left_lon)/uinv.x,
-            (this.bitmap.height-1-y+0.5+bottom_lat)/uinv.y
+            (this.height-1-y+0.5+bottom_lat)/uinv.y
         );
     }
     /**
@@ -107,7 +107,10 @@ export class GaluchatMap {
     }
 
     public renderToCanvas(ctx:CanvasRenderingContext2D,x:number=0,y:number=0) {
-        ctx.drawImage(this.bitmap, x, y);
+        //undefinedの時は描画しないっす
+        if(this.bitmap){
+            ctx.drawImage(this.bitmap, x, y);
+        }
     }    
     
 }

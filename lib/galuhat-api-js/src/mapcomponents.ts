@@ -53,20 +53,24 @@ export class SimpleMapComponent extends EventTarget {
         super();
         //要素の構築
         const c=document.createElement("canvas");
+        c.style.position = "absolute"; // スクロール禁止
+        element.style.overflow = "clip"; // スクロール禁止
+        element.style.padding = "0"; // スクロール禁止
+        element.style.position = "relative"; // スクロール禁止
+        element.style.boxSizing = "border-box"; // スクロール禁止
+        
+
         c.width=element.clientWidth
         c.height=element.clientHeight
         this.update = debounce((lon:number,lat:number,options?:MapOptions) => {
             (async()=>{
-                console.log("up")
                 const width = this.element.clientWidth;
                 const height = this.element.clientHeight;
                 try {
                     let mapImage
                     if(width*height==0){
                         //APIはサイズ0を作れないから。
-                        const imageData = new ImageData(0, 0); // 0×0 の ImageData を作成
-                        const bitmap = await createImageBitmap(imageData); // ImageBitmap を作成
-                        mapImage=new GaluchatMap(lon,lat,this.mapProvider.unit_invs,options,bitmap)
+                        mapImage=new GaluchatMap(lon,lat,this.mapProvider.unit_invs,options,undefined)
                         return
                     }else{
                         mapImage = await this.mapProvider.getMap(lon, lat, width, height,options?options:undefined);
@@ -106,7 +110,12 @@ export class SimpleMapComponent extends EventTarget {
             element.addEventListener(i,this.#_clickHandler)
             // c.addEventListener(i,()=>{},true)//イベント発生するようにする。
         }
+        let aa=0
         const debounceResize=debounce((w:number,h:number) => {
+            // if(aa>10){
+            //     return
+            // }
+            console.log(w,h)
             c.width=w
             c.height=h
             let cr=this.current_result
@@ -115,12 +124,13 @@ export class SimpleMapComponent extends EventTarget {
                     this.update(cr.center.lon,cr.center.lat)
                 })()
             }
+            aa++
             },100);
 
         // リサイズ監視のセットアップ
         this.#resizeObserver = new ResizeObserver(() => {
             debounceResize(element.clientWidth,element.clientHeight);
-            console.log("resize")
+            // console.log("resize")
         });
         // const init_ll=initial_lonlat?initial_lonlat:this.#DEFAULT_LONLA
         //debouncedResize(element.clientWidth,element.clientHeight);
