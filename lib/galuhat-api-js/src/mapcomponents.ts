@@ -31,12 +31,13 @@ export class MapPointerEvent extends PointerEvent {
 }
 
 /**
- * 表示機能を備えたコンポーネント。あとイベントの置き換え
+ * 表示機能を備えたコンポーネント。
+ * updateを実行する
  */
 export class SimpleMapComponent extends EventTarget {
     protected element: HTMLElement;
     protected mapProvider: IMapProvider;
-    private resizeObserver: ResizeObserver;
+    #resizeObserver: ResizeObserver;
     protected last_options:MapOptions|undefined=undefined;
     protected canvas: HTMLCanvasElement;
     #_clickHandler: EventListener;
@@ -45,24 +46,42 @@ export class SimpleMapComponent extends EventTarget {
      * 現在表示中のマップ
      */
     public current_result:GaluchatMap|undefined;
-    #DEFAULT_LONLA=new Lonlat(140.030,35.683)
+    public update: (lon:number,lat:number,options?:MapOptions) => void;
 
-    constructor(element: HTMLElement, mapProvider: IMapProvider,initial_lonlat:Lonlat|undefined)
+    constructor(element: HTMLElement, mapProvider: IMapProvider,with_update:boolean=true)
     {
         super();
         //要素の構築
         const c=document.createElement("canvas");
         c.width=element.clientWidth
         c.height=element.clientHeight
-        const debouncedResize = debounce((w:number,h:number) => {
-            if(w*h==0){return}
-            const cr=this.current_result
-            if(cr && (c.width!=w || c.height!=h)){
-                c.width = w;
-                c.height = h;
-                this.update(cr.center.lon,cr.center.lat)
-            }
-        }, 300);
+        this.update = debounce((lon:number,lat:number,options?:MapOptions) => {
+            (async()=>{
+                console.log("up")
+                const width = this.element.clientWidth;
+                const height = this.element.clientHeight;
+                try {
+                    let mapImage
+                    if(width*height==0){
+                        //APIはサイズ0を作れないから。
+                        const imageData = new ImageData(0, 0); // 0×0 の ImageData を作成
+                        const bitmap = await createImageBitmap(imageData); // ImageBitmap を作成
+                        mapImage=new GaluchatMap(lon,lat,this.mapProvider.unit_invs,options,bitmap)
+                        return
+                    }else{
+                        mapImage = await this.mapProvider.getMap(lon, lat, width, height,options?options:undefined);
+                        mapImage.renderToCanvas(this.canvas.getContext("2d")!);    
+                    }
+                    this.last_options=options
+                    this.current_result=mapImage            
+                } catch (error) {
+                    this.current_result=undefined;
+                    console.error("Failed to update map:", error);
+                }
+            })();
+        }, 100);
+
+       
         this.canvas=c   
         element.appendChild(c);
         //イベントバインド
@@ -87,50 +106,56 @@ export class SimpleMapComponent extends EventTarget {
             element.addEventListener(i,this.#_clickHandler)
             // c.addEventListener(i,()=>{},true)//イベント発生するようにする。
         }
+        const debounceResize=debounce((w:number,h:number) => {
+            c.width=w
+            c.height=h
+            let cr=this.current_result
+            if (cr){
+                (async ()=>{
+                    this.update(cr.center.lon,cr.center.lat)
+                })()
+            }
+            },100);
 
         // リサイズ監視のセットアップ
-        this.resizeObserver = new ResizeObserver(() => {
-            // for (const entry of entries) {
-            //     const resizeEvent = new CustomEvent("resize", {
-            //         detail: { width: entry.contentRect.width, height: entry.contentRect.height }
-            //     });
-            //     this.dispatchEvent(resizeEvent);
-            // }
-            debouncedResize(element.clientWidth,element.clientHeight);
+        this.#resizeObserver = new ResizeObserver(() => {
+            debounceResize(element.clientWidth,element.clientHeight);
             console.log("resize")
         });
-        const init_ll=initial_lonlat?initial_lonlat:this.#DEFAULT_LONLA
+        // const init_ll=initial_lonlat?initial_lonlat:this.#DEFAULT_LONLA
         //debouncedResize(element.clientWidth,element.clientHeight);
 
-        this.resizeObserver.observe(element);
+        this.#resizeObserver.observe(element);
         //リソースの初期化
         this.element = element;
         this.mapProvider = mapProvider;
         this.current_result=undefined;
-        this.update(init_ll.lon,init_ll.lat)
-    }
-    public async update(lon:number,lat:number,options:undefined|MapOptions=undefined){
-        const width = this.element.clientWidth;
-        const height = this.element.clientHeight;
-        try {
-            let mapImage
-            if(width*height==0){
-                //APIはサイズ0を作れないから。
-                const imageData = new ImageData(0, 0); // 0×0 の ImageData を作成
-                const bitmap = await createImageBitmap(imageData); // ImageBitmap を作成
-                mapImage=new GaluchatMap(lon,lat,this.mapProvider.unit_invs,options,bitmap)
-                return
-            }else{
-                mapImage = await this.mapProvider.getMap(lon, lat, width, height,options?options:undefined);
-                mapImage.renderToCanvas(this.canvas.getContext("2d")!);    
-            }
-            this.last_options=options
-            this.current_result=mapImage            
-        } catch (error) {
-            this.current_result=undefined;
-            console.error("Failed to update map:", error);
+        if(with_update){
+            this.update(140.030,35.683)
         }
     }
+    // public async update(lon:number,lat:number,options:undefined|MapOptions=undefined){
+    //     const width = this.element.clientWidth;
+    //     const height = this.element.clientHeight;
+    //     try {
+    //         let mapImage
+    //         if(width*height==0){
+    //             //APIはサイズ0を作れないから。
+    //             const imageData = new ImageData(0, 0); // 0×0 の ImageData を作成
+    //             const bitmap = await createImageBitmap(imageData); // ImageBitmap を作成
+    //             mapImage=new GaluchatMap(lon,lat,this.mapProvider.unit_invs,options,bitmap)
+    //             return
+    //         }else{
+    //             mapImage = await this.mapProvider.getMap(lon, lat, width, height,options?options:undefined);
+    //             mapImage.renderToCanvas(this.canvas.getContext("2d")!);    
+    //         }
+    //         this.last_options=options
+    //         this.current_result=mapImage            
+    //     } catch (error) {
+    //         this.current_result=undefined;
+    //         console.error("Failed to update map:", error);
+    //     }
+    // }
     /**
      * マッププロバイダを更新する。更新と同時にアップデートを実行。失敗した場合はproviderを元に戻す。
      * @param provider 
@@ -161,7 +186,7 @@ export class SimpleMapComponent extends EventTarget {
         //めんどくさいからあとで！
         // this.element.removeEventListener("click", this._clickHandler);
         // this.element.removeEventListener("click", this._pointerHandler);
-        this.resizeObserver.disconnect();
+        this.#resizeObserver.disconnect();
     }
 
 }
@@ -179,10 +204,11 @@ export class PointMapEvent extends CustomEvent<Lonlat> {
  * 解像度変更はマップ切替
  */
 export class ZoomInMapComponent extends SimpleMapComponent {
-    private map_providers: IMapProvider[];   //
-    private current_map_rovider:number;     //現在選択しているマッププロバイダ
+    #map_providers: IMapProvider[];   //
+    private current_map_provider_index:number;     //現在選択しているマッププロバイダ
     #_wheelHandler: EventListener;
-    #_pointerHandler: EventListener;     
+    #_pointerHandler: EventListener;
+    public get currentMapSet():string{return this.#map_providers[this.current_map_provider_index].name}
     /**
      * 
      * @param element 
@@ -192,11 +218,11 @@ export class ZoomInMapComponent extends SimpleMapComponent {
      * 現在選択しているマッププロバイダ
      */
 
-    constructor(element: HTMLElement, mapProviders: IMapProvider[],default_map_index:number=0,initial_lonlat:Lonlat|undefined=undefined)
+    constructor(element: HTMLElement, mapProviders: IMapProvider[],default_map_index:number=0)
     {
-        super(element,mapProviders[default_map_index],initial_lonlat);
-        this.map_providers=mapProviders
-        this.current_map_rovider=default_map_index
+        super(element,mapProviders[default_map_index]);
+        this.#map_providers=mapProviders
+        this.current_map_provider_index=default_map_index
         //イベントバインド
         class DlgInfo{
             readonly start_time:number
@@ -237,6 +263,7 @@ export class ZoomInMapComponent extends SimpleMapComponent {
                 drg_info=undefined
                 break
             case "pointerdown":
+                
                 // alert(e.type)
                 // const touchCount = e.pointerType === 'touch' ? e.getCoalescedEvents().length : 0;
                 // alert(touchCount)
@@ -282,20 +309,67 @@ export class ZoomInMapComponent extends SimpleMapComponent {
         element.addEventListener("wheel",this.#_wheelHandler);
     }
     /**
+     * urlパラメータを解析して可能ならマップをロードする。
+     * @param url 
+     * @returns 
+     */
+    public async updateByUrl(url:URL):Promise<boolean>
+    {
+        try {
+            const params = new URLSearchParams(url.search);
+            
+            const mapset = params.get("mapset");
+            const selected_aac = params.get("aac");
+            const latStr = params.get("lat");
+            const lonStr = params.get("lon");
+
+            let mapset_idx=this.current_map_provider_index
+
+            if(mapset){
+                const index = this.#map_providers.findIndex(obj => obj.name === mapset);
+                if(index<0){
+                    return false;
+                }
+                mapset_idx=index    
+            }
+            let aac=undefined
+            
+            if (Number.isInteger(selected_aac)) {
+                aac=parseInt(selected_aac!);
+            }
+            if (Number.isNaN(latStr) || Number.isNaN(lonStr)) {
+                return false;
+            }
+            
+            const index = this.#map_providers.findIndex(obj => obj.name === mapset);
+            if(index<0){
+                return false;
+            }
+            //mapセットの切替
+            if(this.current_map_provider_index!=mapset_idx){
+                this.switchMapProvider(this.#map_providers[mapset_idx],new Lonlat(Number.parseFloat(lonStr!),Number.parseFloat(latStr!)));
+                this.current_map_provider_index=mapset_idx
+            }         
+            return true;
+        } catch (error) {
+            return false;
+        }
+    }
+    /**
      * 地図上の点を中心に
      * @param pos 
      * @returns 
      */
     public async zoomOut(pos:Point|undefined=undefined)
     {
-        if(this.current_map_rovider==0 || this.current_result==null){
+        if(this.current_map_provider_index==0 || this.current_result==null){
             return false
         }
-        const mps=this.map_providers
+        const mps=this.#map_providers
         //スケールの計算
-        const new_map=mps[this.current_map_rovider-1]
-        const old_map=mps[this.current_map_rovider]
-        this.current_map_rovider-=1      
+        const new_map=mps[this.current_map_provider_index-1]
+        const old_map=mps[this.current_map_provider_index]
+        this.current_map_provider_index-=1      
         var lonlat:Lonlat|undefined=undefined
 
         if(pos!=undefined){
@@ -316,14 +390,14 @@ export class ZoomInMapComponent extends SimpleMapComponent {
         return true
     }
     public async zoomIn(pos:Point|undefined=undefined){
-        if(this.current_map_rovider>=this.map_providers.length-1|| this.current_result==null){
+        if(this.current_map_provider_index>=this.#map_providers.length-1|| this.current_result==null){
             return false
         }
-        const mps=this.map_providers
+        const mps=this.#map_providers
         //スケールの計算
-        const new_map=mps[this.current_map_rovider+1]
-        const old_map=mps[this.current_map_rovider]
-        this.current_map_rovider+=1        
+        const new_map=mps[this.current_map_provider_index+1]
+        const old_map=mps[this.current_map_provider_index]
+        this.current_map_provider_index+=1        
         var lonlat:Lonlat|undefined=undefined
 
         if(pos!=undefined){
@@ -352,73 +426,73 @@ export class ZoomInMapComponent extends SimpleMapComponent {
     }
 }
 
-export class AacSelectedEvent extends CustomEvent<GaluchatAac> {
-    public readonly aac:GaluchatAac
-    constructor(aacode:GaluchatAac) {
-        super("aacSelected")
-        this.aac=aacode
-    }
-}
-/**
- * 地域選択可能なマップ
- */
-export class AAcSelectMapComponent extends ZoomInMapComponent {
-    private selected_aac:GaluchatAac|null=null
-    constructor(element: HTMLElement, mapProviders: IMapProvider[],default_map_index:number=0,initial_lonlat:Lonlat|undefined=undefined){
-        super(element,mapProviders,default_map_index=default_map_index,initial_lonlat=initial_lonlat)
-        this.addEventListener("pointmap",(e)=>{
-            if(e instanceof PointMapEvent){
-                const ap=new WebApiAacProvider(this.mapProvider.mapset)
-                ap.getCode(e.lonlat.lon,e.lonlat.lat).then((raac)=>{
-                    if(raac.aacode==0){
-                        this.dispatchEvent(new AacSelectedEvent(raac));
-                    }else if(this.selected_aac && raac.aacode==this.selected_aac.aacode){
-                        //ntd
-                    // }else if(raac.address==null){
-                    }else{
-                        this.update(this.current_result!.center.lon,this.current_result!.center.lat,new MapOptions([raac.aacode])).then(()=>{
-                            this.dispatchEvent(new AacSelectedEvent(raac));
-                        });
-                    }
-                    this.selected_aac=raac
-                });
-            }
-        });
-    }
+// export class AacSelectedEvent extends CustomEvent<GaluchatAac> {
+//     public readonly aac:GaluchatAac
+//     constructor(aacode:GaluchatAac) {
+//         super("pointmap")
+//         this.aac=aacode
+//     }
+// }
+// /**
+//  * 地域選択可能なマップ
+//  */
+// export class AAcSelectMapComponent extends ZoomInMapComponent {
+//     private selected_aac:GaluchatAac|null=null
+//     constructor(element: HTMLElement, mapProviders: IMapProvider[],default_map_index:number=0,initial_lonlat:Lonlat|undefined=undefined){
+//         super(element,mapProviders,default_map_index=default_map_index,initial_lonlat=initial_lonlat)
+//         this.addEventListener("pointmap",(e)=>{
+//             if(e instanceof PointMapEvent){
+//                 const ap=new WebApiAacProvider(this.mapProvider.mapset)
+//                 ap.getCode(e.lonlat.lon,e.lonlat.lat).then((raac)=>{
+//                     if(raac.aacode==0){
+//                         this.dispatchEvent(new AacSelectedEvent(raac));
+//                     }else if(this.selected_aac && raac.aacode==this.selected_aac.aacode){
+//                         //ntd
+//                     // }else if(raac.address==null){
+//                     }else{
+//                         this.update(this.current_result!.center.lon,this.current_result!.center.lat,new MapOptions([raac.aacode])).then(()=>{
+//                             this.dispatchEvent(new AacSelectedEvent(raac));
+//                         });
+//                     }
+//                     this.selected_aac=raac
+//                 });
+//             }
+//         });
+//     }
      
-}
+// }
 
 
-export class JccSelectedEvent extends CustomEvent<GaluchatAac> {
-    public readonly jcc:GaluchatJcc
-    constructor(jcc:GaluchatJcc) {
-        super("jccSelected")
-        this.jcc=jcc
-    }
-}
-export class JccSelectMapComponent extends ZoomInMapComponent {
-    private selected_jcc:GaluchatJcc|null=null
-    constructor(element: HTMLElement, mapProviders: IMapProvider[],default_map_index:number=0,initial_lonlat:Lonlat|undefined=undefined){
-        super(element,mapProviders,default_map_index=default_map_index,initial_lonlat=initial_lonlat)
-        this.addEventListener("pointmap",(e)=>{
-            //マウスのみ
-            if(e instanceof PointMapEvent){
-                const ap=new WebApiJccProvider(this.mapProvider.mapset)
-                ap.getCode(e.lonlat.lon,e.lonlat.lat).then((rjcc)=>{
-                    if(rjcc.aacode==0){
-                        this.dispatchEvent(new JccSelectedEvent(rjcc));
-                    }else if(this.selected_jcc && rjcc.aacode==this.selected_jcc.aacode){
-                        //ntd
-                    // }else if(raac.address==null){
-                    }else{
-                        this.update(this.current_result!.center.lon,this.current_result!.center.lat,new MapOptions([rjcc.aacode])).then(()=>{
-                            this.dispatchEvent(new JccSelectedEvent(rjcc));
-                        });
-                    }
-                    this.selected_jcc=rjcc
-                });
-            }
-        });
-    }
+// export class JccSelectedEvent extends CustomEvent<GaluchatAac> {
+//     public readonly jcc:GaluchatJcc
+//     constructor(jcc:GaluchatJcc) {
+//         super("pointmap")
+//         this.jcc=jcc
+//     }
+// }
+// export class JccSelectMapComponent extends ZoomInMapComponent {
+//     private selected_jcc:GaluchatJcc|null=null
+//     constructor(element: HTMLElement, mapProviders: IMapProvider[],default_map_index:number=0,initial_lonlat:Lonlat|undefined=undefined){
+//         super(element,mapProviders,default_map_index=default_map_index,initial_lonlat=initial_lonlat)
+//         this.addEventListener("pointmap",(e)=>{
+//             //マウスのみ
+//             if(e instanceof PointMapEvent){
+//                 const ap=new WebApiJccProvider(this.mapProvider.mapset)
+//                 ap.getCode(e.lonlat.lon,e.lonlat.lat).then((rjcc)=>{
+//                     if(rjcc.aacode==0){
+//                         this.dispatchEvent(new JccSelectedEvent(rjcc));
+//                     }else if(this.selected_jcc && rjcc.aacode==this.selected_jcc.aacode){
+//                         //ntd
+//                     // }else if(raac.address==null){
+//                     }else{
+//                         this.update(this.current_result!.center.lon,this.current_result!.center.lat,new MapOptions([rjcc.aacode])).then(()=>{
+//                             this.dispatchEvent(new JccSelectedEvent(rjcc));
+//                         });
+//                     }
+//                     this.selected_jcc=rjcc
+//                 });
+//             }
+//         });
+//     }
      
-}
+// }

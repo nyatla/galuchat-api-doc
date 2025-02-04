@@ -1,58 +1,99 @@
-import * as f1 from "./mapcomponents.ts";
-import * as f2 from "./mapprovider.ts";
-import * as f3 from "./geocodeprovider.ts"
-import * as f4 from "./galuchat-typse.ts"
+import {PointMapEvent,ZoomInMapComponent,MapMouseEvent} from "./mapcomponents.ts";
+import {WebApiMapProvider,} from "./mapprovider.ts";
+import {WebApiJccProvider, WebApiAacProvider,} from "./geocodeprovider.ts";
+import {Lonlat} from "./galuchat-typse.ts"
 import './styles.less';
 
-var GaluchatApiJs={
-    ...f1,
-    ...f2,
-    ...f3,
-    ...f4,
-};
+
+var mps=[
+    new WebApiMapProvider("ma100"),
+    new WebApiMapProvider("ma1000"),
+    new WebApiMapProvider("ma10000")
+]
+class AppBase{
+    constructor(readonly component:ZoomInMapComponent){};
+}
+class AacApp extends AppBase{
+    // public selected_aac:GaluchatAac
+    static createCmp():ZoomInMapComponent{
+        const cmp=new ZoomInMapComponent(document.getElementById("map")!,mps,0);
+        document.getElementById("zoom-in")?.addEventListener("click",()=>{cmp.zoomIn()})
+        document.getElementById("zoom-out")?.addEventListener("click",()=>{cmp.zoomOut()})
+        document.getElementById("map_title")!.innerText="行政区域コード";        
+        return cmp;
+    }
+    public constructor(url:URL){
+        super(AacApp.createCmp())
+        this.component.addEventListener("pointmap",(e)=>{
+            if(e instanceof PointMapEvent){
+                const ap=new WebApiAacProvider(this.component.currentMapSet)
+                ap.getCode(e.lonlat.lon,e.lonlat.lat).then((raac)=>{
+                    const tag=document.getElementById("info-box")! as HTMLInputElement;
+                    if(raac.aacode==0){
+                        tag.value=""
+                    }else if(raac.address==null){
+                        tag.value=`${raac.aacode} 所属不明地`;
+                    }else{
+                        tag.value=`${raac.aacode} ${raac.address.prefecture} ${raac.address.city}`;
+                    }
+                    // this.selected_aac=raac
+                });
+            }
+        });
+        //
+        if(!this.component.updateByUrl(url)){
+            const DEFAULT_LONLA=new Lonlat(140.030,35.683)
+            this.component.update(DEFAULT_LONLA.lon,DEFAULT_LONLA.lat)
+        }
+    }
+}
+
+class JccApp extends AppBase{
+    // public selected_aac:GaluchatAac
+    static createCmp():ZoomInMapComponent{
+        const init_ll=new Lonlat(140.0289933,35.6837434)
+        const cmp=new ZoomInMapComponent(document.getElementById("map")!,mps,0,init_ll);
+        document.getElementById("zoom-in")?.addEventListener("click",()=>{cmp.zoomIn()})
+        document.getElementById("zoom-out")?.addEventListener("click",()=>{cmp.zoomOut()})
+        document.getElementById("map_title")!.innerText="JARL市郡区コードマップ";        
+        return cmp;
+    }
+    public constructor(url:URL){
+        super(JccApp.createCmp())
+        this.component.addEventListener("pointmap",(e)=>{
+            if(e instanceof PointMapEvent){
+                const ap=new WebApiJccProvider(this.component.currentMapSet)
+                ap.getCode(e.lonlat.lon,e.lonlat.lat).then((rjcc)=>{
+                    const tag=document.getElementById("info-box")! as HTMLInputElement;
+                    if(rjcc.aacode==0){
+                        tag.value=""
+                    }else if(rjcc.jcc==null){
+                        tag.value=`${rjcc.aacode} 所属不明地`;
+                    }else{
+                        tag.value=`${rjcc.aacode} ${rjcc.jcc.name} (${rjcc.jcc.name_en})`;
+                    }
+                    // this.selected_aac=raac
+                });
+            }
+        });
+    }
+}
+
+
+
 
 window.onload = function() {
- var mps=[
-    new GaluchatApiJs.WebApiMapProvider("ma100"),
-    new GaluchatApiJs.WebApiMapProvider("ma1000"),
-    new GaluchatApiJs.WebApiMapProvider("ma10000")
- ]
- const init_ll=new GaluchatApiJs.Lonlat(140.0289933,35.6837434)
- var cmp=new GaluchatApiJs.AAcSelectMapComponent(document.getElementById("map")!,mps,0,init_ll);
- 
- cmp.addEventListener('click',(e:Event)=>{
-    if(e instanceof GaluchatApiJs.MapMouseEvent){ //OK
-        // cmp.update(e.lonlat.lon, e.lonlat.lat);
-        // let t=new GaluchatApiJs.WebApiJccProvider("ma10000")
-        // t.getCode(e.lonlat.lon,e.lonlat.lat).then((a)=>{console.log(a)})
-        // t.getCode(e.lonlat.lon,e.lonlat.lat).then((a)=>{console.log(a)})
 
-
-        console.log("クリック位置:", e.lonlat.lon, e.lonlat.lat)
+    const urlObj = new URL(window.location.href);
+    const params = new URLSearchParams(urlObj.search);
+    switch(params.get("m")){
+    case "jcc":
+        new JccApp(urlObj)
+        break
+    case "aac":
+    default:
+        new AacApp(urlObj)
     }
-    // console.log("e3s3ss");
-});
-cmp.addEventListener('aacSelected',(e:Event)=>{
-    if(e instanceof GaluchatApiJs.AacSelectedEvent){ //OK
-        const tag=document.getElementById("info-box")! as HTMLInputElement;
-        console.log(e.aac)
-        if(e.aac.aacode==0){
-            tag.value=""
-        }else if(e.aac.address==null){
-            tag.value=`${e.aac.aacode} 所属不明地`;
-        }else{
-            tag.value=`${e.aac.aacode} ${e.aac.address.prefecture} ${e.aac.address.city}`;
-        }
-
-        // cmp.update(e.lonlat.lon, e.lonlat.lat);
-        // console.log("M", e.lonlat.lon, e.lonlat.lat)
-    }
-    // console.log("e3s3ss");
-});
-document.getElementById("zoom-in")?.addEventListener("click",()=>{cmp.zoomIn()})
-document.getElementById("zoom-out")?.addEventListener("click",()=>{cmp.zoomOut()})
- //var img=new GaluchatApiJs.WebApiMapProvider();
-// img.getMap(134.72,35.6,100,100,100).then();
 }
-// alert(1);
+
 

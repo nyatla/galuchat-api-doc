@@ -21,7 +21,7 @@ export interface IMapProvider{
     /**
      * マップセットの名前を返す
      */
-    readonly mapset:string;
+    readonly name:string;
     /**
      * マップの解像度情報
      */
@@ -123,14 +123,14 @@ export class WebApiMapProvider implements IMapProvider
     private readonly endpoint:string;
 
         
-    public readonly mapset:string
+    public readonly name:string
     public readonly unit_invs:UnitInvs
     constructor(mapset_name:string,endpoint:string=DEFALUT_ENDPOINT){
         if((mapset_name in MAPSET_TABLE)==false){
             throw new Error(`Invalid mapset name:${mapset_name}`);
         }
         this.endpoint=`${endpoint}/mapgen`;
-        this.mapset=mapset_name;
+        this.name=mapset_name;
         this.unit_invs=MAPSET_TABLE[mapset_name];
     }
     #last_requested_url:string|undefined
@@ -146,7 +146,7 @@ export class WebApiMapProvider implements IMapProvider
      */
     async getMap(lon: number, lat: number, width: number, height: number,options:MapOptions|undefined=undefined): Promise<GaluchatMap> {
         // APIエンドポイントへのURLを構築
-        const url = `${this.endpoint}?lon=${lon}&lat=${lat}&size=${width},${height}&mapset=${this.mapset}${options?options.querySuffix:""}`;
+        const url = `${this.endpoint}?lon=${lon}&lat=${lat}&size=${width},${height}&mapset=${this.name}${options?options.querySuffix:""}`;
         if(this.#last_requested_url==url && this.#last_map!=undefined){
             console.log(`cached return:${url}`);//二重描画がでてるときにあるかもね
             return this.#last_map
