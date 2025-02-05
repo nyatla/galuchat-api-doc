@@ -11,6 +11,18 @@ export class Size{
  */
 export class Point{
     constructor(readonly x: number, readonly y: number) {}
+    static distance(a:Point,b:Point){
+        return Math.sqrt((a.x-b.x)**2+(a.y-b.y)**2)
+    }
+    move(x:number,y:number):Point{
+        return new Point(this.x+x,this.y+y)
+    }
+    sub(b:Point):Point{
+        return new Point(this.x-b.x,this.y-b.y)
+    }
+    add(b:Point):Point{
+        return new Point(this.x+b.x,this.y+b.y)
+    }
 }
 
 export class UnitInvs extends Point{}

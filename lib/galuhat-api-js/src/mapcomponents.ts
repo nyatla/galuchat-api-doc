@@ -21,8 +21,8 @@ export class MapMouseEvent extends MouseEvent {
 export class MapPointerEvent extends PointerEvent {
     public readonly lonlat:Lonlat;//選択位置の経緯度
     public readonly mapinfo:GaluchatMap;//選択位置の経緯度
-    constructor(event: Event, target:HTMLElement,mapinfo: GaluchatMap) {
-        super(event.type, event);
+    constructor(type:string,event: Event, target:HTMLElement,mapinfo: GaluchatMap) {
+        super(type, event);
         const e=event as PointerEvent
         const rect = target.getBoundingClientRect();
         this.lonlat=mapinfo.point2Lonlat(e.clientX! - rect.left,e.clientY! - rect.top);
@@ -42,6 +42,7 @@ export class SimpleMapComponent extends EventTarget {
     protected canvas: HTMLCanvasElement;
     #_clickHandler: EventListener;
     #_pointerHandler: EventListener;    
+    #_pointerHandler2: EventListener;    
     /**
      * 現在表示中のマップ
      */
@@ -89,15 +90,37 @@ export class SimpleMapComponent extends EventTarget {
         this.canvas=c   
         element.appendChild(c);
         //イベントバインド
+        let captured_point_ids:number[]=[]
+        //downは範囲内のみ,moveとupはウインドウ全域にしてupまでイベントがモリモリする
         this.#_pointerHandler = (event:Event)=>{
             if(!this.current_result){
                 return;
             }
-            this.dispatchEvent(new MapPointerEvent(event,this.element,this.current_result));            
+            const e=event as PointerEvent
+            if(e.type=="pointerdown" && captured_point_ids.indexOf(e.pointerId)==-1){
+                captured_point_ids.push(e.pointerId)
+            }
+            this.dispatchEvent(new MapPointerEvent(event.type,event,this.element,this.current_result));            
         }
-        for(let i of ["pointerup","pointerdown","pointermove"]){
+        for(let i of ["pointerdown"]){
             element.addEventListener(i,this.#_pointerHandler)
-            // c.addEventListener(i,()=>{},true)//イベント発生するようにする。
+        }
+        this.#_pointerHandler2 = (event:Event)=>{
+            if(!this.current_result){
+                return;
+            }
+            const e=event as PointerEvent
+            if(captured_point_ids.indexOf(e.pointerId)!=-1){
+                switch(e.type){
+                case "pointerup":
+                    captured_point_ids=captured_point_ids.filter(x => x !==e.pointerId); 
+                    break;
+                }
+                this.dispatchEvent(new MapPointerEvent(event.type,event,this.element,this.current_result));
+            }
+        }
+        for(let i of ["pointermove","pointerup"]){
+            window.addEventListener(i,this.#_pointerHandler2)
         }
 
         this.#_clickHandler=(event: Event)=>{
@@ -106,16 +129,15 @@ export class SimpleMapComponent extends EventTarget {
             }
             this.dispatchEvent(new MapMouseEvent(event,this.element,this.current_result));
         }
+        element.addEventListener("contextmenu",(e)=>{e.preventDefault()})
         for(let i of ["click","mousemove","mousedown","mouseup","dblclick"]){
             element.addEventListener(i,this.#_clickHandler)
             // c.addEventListener(i,()=>{},true)//イベント発生するようにする。
         }
-        let aa=0
         const debounceResize=debounce((w:number,h:number) => {
             // if(aa>10){
             //     return
             // }
-            console.log(w,h)
             c.width=w
             c.height=h
             let cr=this.current_result
@@ -124,7 +146,6 @@ export class SimpleMapComponent extends EventTarget {
                     this.update(cr.center.lon,cr.center.lat)
                 })()
             }
-            aa++
             },100);
 
         // リサイズ監視のセットアップ
@@ -144,28 +165,8 @@ export class SimpleMapComponent extends EventTarget {
             this.update(140.030,35.683)
         }
     }
-    // public async update(lon:number,lat:number,options:undefined|MapOptions=undefined){
-    //     const width = this.element.clientWidth;
-    //     const height = this.element.clientHeight;
-    //     try {
-    //         let mapImage
-    //         if(width*height==0){
-    //             //APIはサイズ0を作れないから。
-    //             const imageData = new ImageData(0, 0); // 0×0 の ImageData を作成
-    //             const bitmap = await createImageBitmap(imageData); // ImageBitmap を作成
-    //             mapImage=new GaluchatMap(lon,lat,this.mapProvider.unit_invs,options,bitmap)
-    //             return
-    //         }else{
-    //             mapImage = await this.mapProvider.getMap(lon, lat, width, height,options?options:undefined);
-    //             mapImage.renderToCanvas(this.canvas.getContext("2d")!);    
-    //         }
-    //         this.last_options=options
-    //         this.current_result=mapImage            
-    //     } catch (error) {
-    //         this.current_result=undefined;
-    //         console.error("Failed to update map:", error);
-    //     }
-    // }
+
+    
     /**
      * マッププロバイダを更新する。更新と同時にアップデートを実行。失敗した場合はproviderを元に戻す。
      * @param provider 
@@ -235,67 +236,236 @@ export class ZoomInMapComponent extends SimpleMapComponent {
         this.current_map_provider_index=default_map_index
         //イベントバインド
         class DlgInfo{
-            readonly start_time:number
-            readonly start_pos:Point
-            readonly start_lonlat:Lonlat
-            constructor(start_pos:Point,start_lonlat:Lonlat){
-                this.start_time=Date.now()
-                this.start_pos=start_pos
-                this.start_lonlat=start_lonlat
+            last_pos:Point
+            constructor(
+                readonly id:number,
+                readonly start_time:number,
+                readonly start_pos:Point,
+                readonly start_lonlat:Lonlat){this.last_pos=start_pos};
+            static createFromEvent(e:MapPointerEvent){
+                return new DlgInfo(e.pointerId,Date.now(),new Point(e.clientX,e.clientY),e.lonlat)
             }
             get ellapse():number{
                 return Date.now()-this.start_time
             }
-        }      
+            moveStartPos(x:number,y:number):DlgInfo{
+                return new DlgInfo(this.id,this.start_time,this.start_pos.move(x,y),this.start_lonlat)
+            }
+            updateLastPos(e:MapPointerEvent){
+                this.last_pos=new Point(e.clientX,e.clientY)
+            }
+        }
         let drg_info:DlgInfo|undefined=undefined //ドラッグの開始点
-        
+        abstract class DlgMgr{
+            points:DlgInfo[]=[]
+            /**
+             * MT時の開始位置
+             */
+            mtstart?:Point=undefined
+            #last_distance=0
+            /**
+             * MT時の中心位置
+             */
+            get center():Point{
+                let x=0
+                let y=0
+                for(let i of this.points){
+                    x+=i.last_pos.x
+                    y+=i.last_pos.y
+                }
+                return new Point(x/this.points.length,y/this.points.length)
+            }
+            get zoomStep():number{
+                if(this.points.length<2){
+                    return 0
+                }
+                const d=Point.distance(this.points[0].last_pos,this.points[1].last_pos)
+                if(d>this.#last_distance*1.3){
+                    this.#last_distance=d
+                    return 1
+                }else if(d<this.#last_distance*.7){
+                    this.#last_distance=d
+                    return -1
+                }
+                return 0
+            }
+
+            update(e:MapPointerEvent):boolean
+            {
+                try{
+                    if(e.pointerType=="touch"){
+                        const points=this.points
+                        switch(e.type){
+                            // case "pointerup":{}
+                            case "pointerdown":{
+                                console.log(`D:points:${points.length}`)
+                                if(points.findIndex(o=> o.id==e.pointerId)!=-1){
+                                    break
+                                }
+                                switch(points.length){
+                                case 0:
+                                    points.push(DlgInfo.createFromEvent(e))
+                                    this.mtstart=points[0].start_pos
+                                    break
+                                case 1:
+                                    points.push(DlgInfo.createFromEvent(e))
+                                    const w=points[1].last_pos.sub(points[0].last_pos)
+                                    this.mtstart=new Point(this.mtstart!.x+w.x*.5,this.mtstart!.y+w.y*.5)
+                                    this.#last_distance=Point.distance(points[0].last_pos,points[1].last_pos)
+                                    break
+                                default:
+                                    break
+                                }
+                            }
+                            break;
+                            case "pointermove":{
+                                const idx=points.findIndex(i=>i.id==e.pointerId)
+                                if(idx==-1){
+                                    break
+                                }
+                                points[idx].updateLastPos(e)
+                                const x=this.center.x-this.mtstart!.x
+                                const y=this.center.y-this.mtstart!.y
+                                if(points.length==2){
+                                    switch(this.zoomStep){
+                                    case 1:
+                                        this.onzoom(1,this.center)
+                                        return true
+                                    case -1:
+                                        this.onzoom(-1,this.center)
+                                        return true
+                                    }
+                                    
+                                }
+                                if(x*y!=0){
+                                    this.onmove(e,x,y)//Event:確定(移動量)
+                                }
+                                
+                                break
+                            }
+                            case "pointerup":{
+                                const idx=points.findIndex(i=>i.id==e.pointerId)
+                                if(idx==-1){
+                                    break
+                                }
+                                console.log(`U:points:${this.points.length}`)
+                                points[idx].updateLastPos(e)
+                                const x=this.center.x-this.mtstart!.x
+                                const y=this.center.y-this.mtstart!.y
+                                switch(points.length){
+                                case 2:
+                                    //centerの補正
+                                    const w=points[1].last_pos.sub(points[0].last_pos)
+                                    const sig=(idx==0)?.5:-.5;
+                                    this.mtstart=new Point(this.mtstart!.x+w.x*sig,this.mtstart!.y+w.y*sig)
+                                    this.points=points.filter(i=>i.id!=e.pointerId)
+                                    return true//move継続
+                                }
+                                const item=this.points[0]
+                                
+                                //event:完了。
+                                if(x!=0 && y!=0){
+                                    this.onmoved(e,x,y)//Event:確定(移動量)
+                                }else if(item.ellapse<1000){
+                                    this.onselect(e)//Event:座標選択(latlon)
+                                }
+                                //そのポインタを削除
+                                this.points=this.points.filter(x => x.id !==e.pointerId); 
+                                // console.log(`U2:points:${this.points.length}`)
+                                break
+                            }
+                        }    
+
+                    }else{
+                        switch(e.type){
+                            // case "pointerup":{}
+                            case "pointerdown":{
+                                if(this.points.length==0 && (e.buttons & 1)==1){
+                                    this.points.push(DlgInfo.createFromEvent(e))
+                                }
+                            }
+                            break;
+                            case "pointermove":{
+                                if(this.points.length==0 || this.points[0].id!=e.pointerId){
+                                    break
+                                }
+                                const item=this.points[0]
+                                const x=e.clientX-item.start_pos.x
+                                const y=e.clientY-item.start_pos.y
+                                if(x*y!=0){
+                                    this.onmove(e,x,y)//Event:確定(移動量)
+                                }
+                                break
+                            }
+                            case "pointerup":{
+                                if(this.points.length==0||this.points[0].id!=e.pointerId){
+                                    break
+                                }
+                                if((e.buttons & 1)!=0){
+                                    break
+                                }
+                                const item=this.points[0]
+                                const x=e.clientX-item.start_pos.x
+                                const y=e.clientY-item.start_pos.y
+                                //event:完了。
+                                if(x!=0 && y!=0){
+                                    this.onmoved(e,x,y)//Event:確定(移動量)
+                                }else if(item.ellapse<1000){
+                                    this.onselect(e)//Event:座標選択(latlon)
+                                }
+                                //そのポインタを削除
+                                this.points=this.points.filter(x => x.id !==e.pointerId); 
+                                break
+                            }
+                        }    
+                    }
+                    return true
+                }finally{
+                    
+                }
+            }
+            abstract onselect(e:MapPointerEvent):void;
+            abstract onmove(e:MapPointerEvent,mx:number,my:number):void;
+            abstract onmoved(e:MapPointerEvent,mx:number,my:number):void;
+            abstract onzoom(zoomstep:number,center:Point):void;
+            // zoomin(){}
+            // zoomout(){}            
+        }
+        const _canvas=this.canvas
+        const _this=this
+        class A extends DlgMgr{
+            onselect(e:MapPointerEvent ){
+                console.log(`select:${e.lonlat},${this.points.length}`)
+            };
+            onmoved(e:MapPointerEvent,mx:number,my:number){
+                let cr=e.mapinfo
+                _this.update(
+                    cr.center.lon-mx/cr.unitinvs.x,
+                    cr.center.lat+my/cr.unitinvs.y,_this.last_options)                
+            }
+            onmove(e:MapPointerEvent,mx:number,my:number){
+                // console.log(`move:${mx},${my},${this.points.length}`)
+                const ctx=_canvas.getContext("2d")!;
+                ctx.clearRect(0, 0, _canvas.width, _canvas.height);
+                e.mapinfo.renderToCanvas(ctx,mx,my);
+            }                
+            onzoom(zoomstep:number,center:Point){
+                switch(zoomstep){
+                case 1:
+                    _this.zoomIn(center)
+                   break
+                   case -1:
+                    _this.zoomOut(center)
+                   break
+                }
+            }
+        };
+        let a=new A()
     
 
         this.#_pointerHandler = (event:Event)=>{
             const e=event as  MapPointerEvent;
-            let cr=e.mapinfo
-            switch(e.type){
-            case "pointerup":
-                if(!drg_info){
-                    break;
-                }
-                const x=e.clientX-drg_info.start_pos.x
-                const y=e.clientY-drg_info.start_pos.y
-                    if(x!=0 && y!=0){
-                    this.update(
-                        cr.center.lon-x/cr.unitinvs.x,
-                        cr.center.lat+y/cr.unitinvs.y,this.last_options)
-                }else if(drg_info.ellapse<1000){
-                    this.dispatchEvent(new PointMapEvent(drg_info.start_lonlat))
-
-                }
-
-                drg_info=undefined
-                break
-            case "pointerdown":
-                
-                // alert(e.type)
-                // const touchCount = e.pointerType === 'touch' ? e.getCoalescedEvents().length : 0;
-                // alert(touchCount)
-                // if(e.pointerType=="touch" && touchCount>1){
-                //     //ズーム処理
-                // }else{
-                // }
-                //クリック|移動処理
-                drg_info=new DlgInfo(new Point(e.clientX,e.clientY),e.lonlat);
-                break
-            case "pointermove":
-                if(drg_info){
-                    const x=e.clientX-drg_info.start_pos.x
-                    const y=e.clientY-drg_info.start_pos.y
-                    if(x!=0 && y!=0){
-                        const ctx=this.canvas.getContext("2d")!;
-                        ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-                        cr.renderToCanvas(ctx,x,y);
-                    }
-                }                
-                break
-            }
+            a.update(e)
         }
         for(let i of ["pointerup","pointerdown","pointermove"]){
             this.addEventListener(i,this.#_pointerHandler)
@@ -318,6 +488,7 @@ export class ZoomInMapComponent extends SimpleMapComponent {
         }
         element.addEventListener("wheel",this.#_wheelHandler);
     }
+
     /**
      * urlパラメータを解析して可能ならマップをロードする。
      * @param url 

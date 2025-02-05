@@ -30,6 +30,7 @@ export default defineConfig({
     },
   },
   server: {
+    host:"0.0.0.0",
     open: true, // 開発サーバー起動時にブラウザを自動で開く
     hmr: {
       protocol: 'ws', // WebSocketを使ってHMR
