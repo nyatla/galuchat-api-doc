@@ -1,5 +1,5 @@
-import {PointMapEvent,ZoomInMapComponent,MapMouseEvent} from "./mapcomponents.ts";
-import {WebApiMapProvider,} from "./mapprovider.ts";
+import {PointedEvent,ZoomInMapComponent} from "./mapcomponents.ts";
+import {WebApiMapProvider,MapOptions} from "./mapprovider.ts";
 import {WebApiJccProvider, WebApiAacProvider,} from "./geocodeprovider.ts";
 import {Lonlat} from "./galuchat-typse.ts"
 import './styles.less';
@@ -24,17 +24,25 @@ class AacApp extends AppBase{
     }
     public constructor(url:URL){
         super(AacApp.createCmp())
-        this.component.addEventListener("pointmap",(e)=>{
-            if(e instanceof PointMapEvent){
+        this.component.addEventListener("pointed",(e)=>{
+            if(e instanceof PointedEvent){
                 const ap=new WebApiAacProvider(this.component.currentMapSet)
                 ap.getCode(e.lonlat.lon,e.lonlat.lat).then((raac)=>{
                     const tag=document.getElementById("info-box")! as HTMLInputElement;
+                    let mop:MapOptions|undefined=undefined
+
                     if(raac.aacode==0){
-                        tag.value=""
+                        //tag.value=""
                     }else if(raac.address==null){
                         tag.value=`${raac.aacode} 所属不明地`;
+                        mop=new MapOptions([raac.aacode])
                     }else{
                         tag.value=`${raac.aacode} ${raac.address.prefecture} ${raac.address.city}`;
+                        mop=new MapOptions([raac.aacode])
+                    }
+                    if(mop){
+                        const cp=this.component.current_result!.center
+                        this.component.update(cp.lon,cp.lat,mop)
                     }
                     // this.selected_aac=raac
                 });
@@ -61,7 +69,7 @@ class JccApp extends AppBase{
     public constructor(url:URL){
         super(JccApp.createCmp())
         this.component.addEventListener("pointmap",(e)=>{
-            if(e instanceof PointMapEvent){
+            if(e instanceof PointedEvent){
                 const ap=new WebApiJccProvider(this.component.currentMapSet)
                 ap.getCode(e.lonlat.lon,e.lonlat.lat).then((rjcc)=>{
                     const tag=document.getElementById("info-box")! as HTMLInputElement;
