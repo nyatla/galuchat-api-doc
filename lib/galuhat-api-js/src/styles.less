@@ -9,6 +9,110 @@ body, html {
     -webkit-user-select:none; 
 }
 
+.map-wrapper {
+    position: relative;
+    overflow: hidden;
+}
+.box_default{
+    color:white
+}
+.selectable_input{
+    display: inline;
+    padding: 0;
+    margin: 0;
+    border:none 0;
+}
+#headline{
+    .box_default;
+    display: flex;
+    position: absolute;
+    background: rgba(255, 0, 0, 0);
+    top: .1rem;
+    left:.1rem;
+    right:.1rem;
+    height:4rem;
+    // height:10rem;
+    padding: .5rem;
+    border: none 0px;
+    gap: .5rem; 
+    >div{
+        background: rgba(0, 0, 0, 0.5);
+    }
+    >#codebox{
+        min-width:7rem;
+        max-width:7rem;
+        margin: 0;
+        padding: .3rem;
+        overflow: hidden;
+        >div{
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            width: 100%;
+            margin: 0;
+            padding: 0;
+        }   
+        >div:nth-child(1){
+            // height:1.5rem;
+            // margin: .1rem;
+            font-size: .8rem;
+        }
+        >div:nth-child(2){
+            font-size: 1.6rem;
+        }
+
+    }
+    >#infobox {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center; /* 水平方向の中央揃え */
+        align-items: center; /* 垂直方向の中央揃え */
+        margin: 0;
+        padding: 0;
+        width:100%;
+        overflow: hidden;
+        >span{
+            font-size: 1.8rem;
+            // width:100%;
+            // height:100%;
+            // background:transparent;
+            // color: white;
+            // text-align: center; 
+        }
+
+    }
+}
+
+#controls {
+    position: absolute;
+    bottom: 20px;
+    right: 10px;
+    display: flex;
+    flex-direction: column;
+
+    button {
+        margin-bottom: 5px;
+        padding: 5px 10px;
+        font-size: 16px;
+        border: none;
+        background: rgba(0, 0, 0, 0.5);
+        color: white;
+        cursor: pointer;
+    }
+}
+
+.notice2{
+    position:absolute;
+    font-size: .5em;
+    color: black;
+    background: rgba(255, 255, 255, 0.5);
+    bottom:0px;
+    right:0px;
+}
+
+
+
 /* 画面幅が600px以上のとき */
 @media (min-width: 600px) {
     .map-container {
@@ -17,31 +121,55 @@ body, html {
     }
     .map-wrapper {
         width: 600px;
-        height: 600px;
-        position: relative;
     }
-    .info-box {
-        font-size: 1.5em;  /* 文字の大きさを大きくする */
-    }    
+    // #info-box {
+    //     font-size: 1.5em;  /* 文字の大きさを大きくする */
+    // }    
 }
 
 /* 画面幅が600px未満のとき */
 @media (max-width: 599px) {
     .map-wrapper {
         width: 100vw; /* 幅を画面幅に合わせる */
-        // padding-top: 100%; /* 1:1の縦横比を維持 */
-        height: 100vw; /* 高さを自動調整 */
         max-width: 100%; /* 最大幅を100%に設定 */
-        max-height: 100vw; /* 最大高さを画面幅に合わせる */
-        position: relative;
-        overflow: hidden;
     }
-    .info-box {
-        font-size: 1.1em;  /* 文字の大きさを大きくする */
-    }    
+}
+@media (max-width: 300px) {
+    body,html{
+        overflow: visible;
+
+    }
+    .map-wrapper {
+        width: 300px; /* 幅を画面幅に合わせる */
+        overflow: visible;
+        overflow-x:scroll;
+    }
 }
 
-.container {
+/* 画面幅が600px以上のとき */
+@media (min-height: 650px) {
+    // .map-container {
+    //     display: flex;
+    //     justify-content: center;
+    // }
+    .map-wrapper {
+        height: 600px;
+    }
+}
+
+/* 画面幅が600px未満のとき */
+@media (max-height: 649px) {
+    .map-wrapper {
+        height: 80vh; /* 高さを自動調整 */
+        max-height: 80vh; /* 最大高さを画面幅に合わせる */
+    }
+}
+
+
+#loading{
+    display: none;
+}
+#container {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -58,40 +186,7 @@ body, html {
     height: 100%;
 }
 
-.controls {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    display: flex;
-    flex-direction: column;
-
-    button {
-        margin-bottom: 5px;
-        padding: 5px 10px;
-        font-size: 16px;
-        border: none;
-        background: rgba(0, 0, 0, 0.5);
-        color: white;
-        cursor: pointer;
-    }
-}
 header{
-    font-size:2em;
+    font-size:1em;
 }
-.info-box {
-    text-align: center; /* 文字を中央揃え */    
-    position: absolute;
-    bottom: 10px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: rgba(0, 0, 0, 0.5);
-    color: white;
-    padding: 5px 0px;
-    // border-radius: 5px;
-    width: 100%;
-    text-align: center;
-    border: none 0px;
-}
-.notice{
-    font-size: 0.6em;
-}
+

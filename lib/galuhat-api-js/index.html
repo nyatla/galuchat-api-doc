@@ -6,28 +6,38 @@
     <title>GaluchatMapビューアー</title>
     <!-- <link rel="stylesheet" href="/styles.css"> -->
     <script type="module" src="/src/app_aac.ts"></script>  
+    <script>
+      // document.getElementById("container").style.visibility="hidden"
+      // window.onload
+      window.addEventListener("load",()=>{
+        document.getElementById("container").style.visibility="visible";
+      })
+    </script>
 </head>
 <body>
-    <div class="container">
-        <header class="title" id="map_title">タイトル</header>
+    <div id="loading">Now Loading...</div>
+    <div id="container" style="visibility:hidden">
+        <header class="title" id="map_title">行政区域コードマップ</header>
         <main class="map-container">
             <div class="map-wrapper">
                 <div class="map" id="map"></div>
-                <div class="controls" style="position: absolute; top: 10px; right: 10px;">
+                <div id="headline">
+                  <div id="codebox">
+                    <div>行政区域コード</div>
+                    <div id="codetext">123456</div>
+                  </div>
+                  <div id="infobox">
+                    <!-- <input type="text" readonly id="infotext"> -->
+                  </div>
+                </div>
+
+                <div id="controls">
                     <button id="zoom-in">＋</button>
                     <button id="zoom-out">－</button>
                 </div>
-                <input type="text" readonly id="info-box" class="info-box">
+              <div class="notice2">(c)2025 nyatla.jp</a>&nbsp;<a href="https://github.com/nyatla/galuchat-api-doc">Github</a>&nbsp;この地図は<a href="https://nlftp.mlit.go.jp/ksj/index.html">国土交通省国土数値情報</a>を加工・編集した情報を使用しています。</div>
             </div>
-        </main>
-        <footer class="notice">
-          <ul>
-            <li>国土交通省国土数値情報を加工・編集した地図情報を使用しています。<br/><a href="https://nlftp.mlit.go.jp/ksj/index.html">国土交通省国土数値情報ダウンロードサイト</a>
-            </li>
-            <li>munitable.csvを加工・編集した地図情報を使用しています。<br><a href="https://github.com/w-ockham/JCC-JCG-List/blob/master/LICENSE">w-ockham/JCC-JCG-List</a></li>
-          </ul>
-        </footer>    
-        <div class="notice">(c)2025 nyatla.jp</div>
+          </main>
       </div>
 </body>
 </html>

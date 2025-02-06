@@ -5,7 +5,7 @@ import {DEFALUT_ENDPOINT,MAPSET_TABLE} from "./appdef"
 export class MapOptions{
     constructor(readonly aacs:number[]){}
     public get querySuffix(){
-        return `&aac=${this.aacs.join(',')}`
+        return `aac=${this.aacs.join(',')}`
     }
 }
 export interface IMapProvider{
@@ -26,7 +26,6 @@ export interface IMapProvider{
      * マップの解像度情報
      */
     readonly unit_invs:UnitInvs
-
 }
 
 export class GaluchatMap {
@@ -149,7 +148,7 @@ export class WebApiMapProvider implements IMapProvider
      */
     async getMap(lon: number, lat: number, width: number, height: number,options:MapOptions|undefined=undefined): Promise<GaluchatMap> {
         // APIエンドポイントへのURLを構築
-        const url = `${this.endpoint}?lon=${lon}&lat=${lat}&size=${width},${height}&mapset=${this.name}${options?options.querySuffix:""}`;
+        const url = `${this.endpoint}?lon=${lon}&lat=${lat}&size=${width},${height}&mapset=${this.name}${options?"&"+options.querySuffix:""}`;
         if(this.#last_requested_url==url && this.#last_map!=undefined){
             console.log(`cached return:${url}`);//二重描画がでてるときにあるかもね
             return this.#last_map

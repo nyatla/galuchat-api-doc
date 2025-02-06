@@ -34,48 +34,55 @@ export class MapPointerEvent extends PointerEvent {
         return this.mapinfo.point2Lonlat(this.localPos.x,this.localPos.y);
     }
 }
+/**
+ * マップが更新されたとき
+ */
+export class MapUpdatedEvent extends CustomEvent<Lonlat> {
+    constructor() {
+        super("mapupdated")
+    }
+}
 
 /**
  * 表示機能を備えたコンポーネント。
  * updateを実行する
  */
-export class SimpleMapComponent extends EventTarget {
-    protected element: HTMLElement;
+export class SimpleMapComponent extends EventTarget
+{
+    public readonly parent_element: HTMLElement;
     protected mapProvider: IMapProvider;
     #resizeObserver: ResizeObserver;
     protected last_options:MapOptions|undefined=undefined;
     protected canvas: HTMLCanvasElement;
     #_clickHandler: EventListener;
     #_pointerHandler: EventListener;    
-    #_pointerHandler2: EventListener;    
+    #_pointerHandler2: EventListener;
     /**
      * 現在表示中のマップ
      */
     public current_result:GaluchatMap|undefined;
-    public async update(lon:number,lat:number,options?:MapOptions){
-        // this.update = debounce((lon:number,lat:number,options?:MapOptions) => {
-            (async()=>{
-                const width = this.element.clientWidth;
-                const height = this.element.clientHeight;
-                try {
-                    let mapImage
-                    if(width*height==0){
-                        //APIはサイズ0を作れないから。
-                        mapImage=new GaluchatMap(lon,lat,this.mapProvider.unit_invs,options,undefined)
-                        return
-                    }else{
-                        mapImage = await this.mapProvider.getMap(lon, lat, width, height,options?options:undefined);
-                        mapImage.renderToCanvas(this.canvas.getContext("2d")!);
-
-                    }
-                    this.last_options=options
-                    this.current_result=mapImage            
-                } catch (error) {
-                    this.current_result=undefined;
-                    console.error("Failed to update map:", error);
-                }
-            })();
-        };
+    public async update(lon:number,lat:number,options?:MapOptions)
+    {
+        const width = this.parent_element.clientWidth;
+        const height = this.parent_element.clientHeight;
+        try {
+            let mapImage
+            if(width*height==0){
+                //APIはサイズ0を作れないから。
+                mapImage=new GaluchatMap(lon,lat,this.mapProvider.unit_invs,options,undefined)
+                return
+            }else{
+                mapImage = await this.mapProvider.getMap(lon, lat, width, height,options?options:undefined);
+                mapImage.renderToCanvas(this.canvas.getContext("2d")!);
+            }
+            this.last_options=options
+            this.current_result=mapImage
+            this.dispatchEvent(new MapUpdatedEvent())
+        } catch (error) {
+            this.current_result=undefined;
+            console.error("Failed to update map:", error);
+        }
+    };
 
     constructor(element: HTMLElement, mapProvider: IMapProvider,with_update:boolean=true)
     {
@@ -107,7 +114,7 @@ export class SimpleMapComponent extends EventTarget {
             if(e.type=="pointerdown" && captured_point_ids.indexOf(e.pointerId)==-1){
                 captured_point_ids.push(e.pointerId)
             }
-            this.dispatchEvent(new MapPointerEvent(event.type,event,this.element,this.current_result));            
+            this.dispatchEvent(new MapPointerEvent(event.type,event,this.parent_element,this.current_result));            
         }
         for(let i of ["pointerdown"]){
             element.addEventListener(i,this.#_pointerHandler)
@@ -123,7 +130,7 @@ export class SimpleMapComponent extends EventTarget {
                     captured_point_ids=captured_point_ids.filter(x => x !==e.pointerId); 
                     break;
                 }
-                this.dispatchEvent(new MapPointerEvent(event.type,event,this.element,this.current_result));
+                this.dispatchEvent(new MapPointerEvent(event.type,event,this.parent_element,this.current_result));
             }
         }
         for(let i of ["pointermove","pointerup"]){
@@ -134,7 +141,7 @@ export class SimpleMapComponent extends EventTarget {
             if(!this.current_result){
                 return;
             }
-            this.dispatchEvent(new MapMouseEvent(event,this.element,this.current_result));
+            this.dispatchEvent(new MapMouseEvent(event,this.parent_element,this.current_result));
         }
         element.addEventListener("contextmenu",(e)=>{e.preventDefault()})
         for(let i of ["click","mousemove","mousedown","mouseup","dblclick"]){
@@ -150,7 +157,7 @@ export class SimpleMapComponent extends EventTarget {
             let cr=this.current_result
             if (cr){
                 (async ()=>{
-                    this.update(cr.center.lon,cr.center.lat)
+                    this.update(cr.center.lon,cr.center.lat,this.last_options)
                 })()
             }
             },100);
@@ -165,14 +172,13 @@ export class SimpleMapComponent extends EventTarget {
 
         this.#resizeObserver.observe(element);
         //リソースの初期化
-        this.element = element;
+        this.parent_element = element;
         this.mapProvider = mapProvider;
         this.current_result=undefined;
         if(with_update){
             this.update(140.030,35.683)
         }
     }
-
     
     /**
      * マッププロバイダを更新する。更新と同時にアップデートを実行。失敗した場合はproviderを元に戻す。
@@ -183,12 +189,15 @@ export class SimpleMapComponent extends EventTarget {
         const old=this.mapProvider
         try{
             this.mapProvider=provider        
-            const cr=this.current_result
-            if(cr==undefined){
-                return;
+            let c=center
+            if(!c){
+                c=this.current_result?.center
             }
-            const c=center?center:cr.center
-            this.update(c.lon,c.lat,this.last_options)
+            if(!c){
+                return
+            }
+            // const c=center?center:cr.center
+            await this.update(c.lon,c.lat,this.last_options)
         }catch{
             this.mapProvider=old
             console.error("can not switch map provider")
@@ -209,7 +218,9 @@ export class SimpleMapComponent extends EventTarget {
 
 }
 
-
+/**
+ * マップを選択した時
+ */
 export class PointedEvent extends CustomEvent<Lonlat> {
     public readonly lonlat:Lonlat
     constructor(lonlat:Lonlat) {
@@ -217,6 +228,7 @@ export class PointedEvent extends CustomEvent<Lonlat> {
         this.lonlat=lonlat
     }
 }
+
 /**
  * ズームイン/ズームアウト/ドラッグで移動のできるマップ。
  * 解像度変更はマップ切替
@@ -226,7 +238,7 @@ export class ZoomInMapComponent extends SimpleMapComponent {
     private current_map_provider_index:number;     //現在選択しているマッププロバイダ
     #_wheelHandler: EventListener;
     #_pointerHandler: EventListener;
-    public get currentMapSet():string{return this.#map_providers[this.current_map_provider_index].name}
+    public get current_mapset_name():string{return this.#map_providers[this.current_map_provider_index].name}
     /**
      * 
      * @param element 
@@ -236,9 +248,9 @@ export class ZoomInMapComponent extends SimpleMapComponent {
      * 現在選択しているマッププロバイダ
      */
 
-    constructor(element: HTMLElement, mapProviders: IMapProvider[],default_map_index:number=0)
+    constructor(element: HTMLElement, mapProviders: IMapProvider[],default_map_index:number=0,with_update:boolean=true)
     {
-        super(element,mapProviders[default_map_index]);
+        super(element,mapProviders[default_map_index],with_update);
         this.#map_providers=mapProviders
         this.current_map_provider_index=default_map_index
         //イベントバインド
@@ -273,6 +285,7 @@ export class ZoomInMapComponent extends SimpleMapComponent {
             mtstart?:Point=undefined
             #last_distance=0
             #last_single_tap:number=0
+            #longtouch_handle:number|undefined=undefined
 
             /**
              * MT時の中心位置
@@ -318,13 +331,18 @@ export class ZoomInMapComponent extends SimpleMapComponent {
                                     points.push(DlgInfo.createFromEvent(e))
                                     this.mtstart=points[0].start_pos
                                     const n=Date.now()
-                                    if(n-this.#last_single_tap<250){
+                                    if(n-this.#last_single_tap<300){
                                         this.onzoom(1,e.localPos)
                                         return true
                                     }
                                     this.#last_single_tap=n
+                                    this.#longtouch_handle=setTimeout(()=>{
+                                        this.onselect(e)},200
+                                    )
                                     break
                                 case 1:
+                                    clearTimeout(this.#longtouch_handle);//長押しタイマのKill
+                                    this.#longtouch_handle=undefined
                                     points.push(DlgInfo.createFromEvent(e))
                                     const w=points[1].last_pos.sub(points[0].last_pos)
                                     this.mtstart=new Point(this.mtstart!.x+w.x*.5,this.mtstart!.y+w.y*.5)
@@ -336,6 +354,7 @@ export class ZoomInMapComponent extends SimpleMapComponent {
                             }
                             break;
                             case "pointermove":{
+                                clearTimeout(this.#longtouch_handle);//長押しタイマのKill
                                 const idx=points.findIndex(i=>i.id==e.pointerId)
                                 if(idx==-1){
                                     break
@@ -362,6 +381,7 @@ export class ZoomInMapComponent extends SimpleMapComponent {
                                 break
                             }
                             case "pointerup":{
+                                clearTimeout(this.#longtouch_handle);//長押しタイマのKill
                                 const idx=points.findIndex(i=>i.id==e.pointerId)
                                 if(idx==-1){
                                     break
@@ -379,18 +399,11 @@ export class ZoomInMapComponent extends SimpleMapComponent {
                                     this.points=points.filter(i=>i.id!=e.pointerId)
                                     return true//move継続
                                 }
-                                const item=this.points[0]
+                                // const item=this.points[0]
                                 
                                 //event:完了。
                                 if(x!=0 && y!=0){
                                     this.onmoved(e,x,y)//Event:確定(移動量)
-                                }else if(item.ellapse<1000){
-                                    const n=Date.now()
-                                    if(n-this.#last_single_tap>250){
-                                        this.onselect(e)//Event:座標選択(latlon)
-                                        this.#last_single_tap=0
-                                    }
-
                                 }
                                 //そのポインタを削除
                                 this.points=this.points.filter(x => x.id !==e.pointerId); 
@@ -485,7 +498,6 @@ export class ZoomInMapComponent extends SimpleMapComponent {
             }
         };
         let a=new A()
-    
 
         this.#_pointerHandler = (event:Event)=>{
             const e=event as  MapPointerEvent;
@@ -500,7 +512,7 @@ export class ZoomInMapComponent extends SimpleMapComponent {
             if(drg_info){
                return; //マウスのドラッグ操作中は何もしない
             }
-            const rect = this.element.getBoundingClientRect();
+            const rect = this.parent_element.getBoundingClientRect();
             const pos=new Point(e.clientX! - rect.left,e.clientY! - rect.top);        
             if (e.deltaY > 0) {
                 this.zoomOut(pos)
@@ -511,6 +523,7 @@ export class ZoomInMapComponent extends SimpleMapComponent {
             e.stopPropagation();  // 伝播を防ぐ
         }
         element.addEventListener("wheel",this.#_wheelHandler);
+        
     }
 
     /**
@@ -537,27 +550,35 @@ export class ZoomInMapComponent extends SimpleMapComponent {
                 }
                 mapset_idx=index    
             }
-            let aac=undefined
+            let aac:number=NaN
             
-            if (Number.isInteger(selected_aac)) {
-                aac=parseInt(selected_aac!);
+            if (selected_aac) {
+                aac=parseInt(selected_aac);
             }
             if (Number.isNaN(latStr) || Number.isNaN(lonStr)) {
                 return false;
             }
-            
+            this.last_options=!isNaN(aac)?new MapOptions([aac]):undefined
             const index = this.#map_providers.findIndex(obj => obj.name === mapset);
             if(index<0){
                 return false;
             }
-            //mapセットの切替
-            if(this.current_map_provider_index!=mapset_idx){
-                this.switchMapProvider(this.#map_providers[mapset_idx],new Lonlat(Number.parseFloat(lonStr!),Number.parseFloat(latStr!)));
-                this.current_map_provider_index=mapset_idx
-            }         
+            await this.switchMapProvider(this.#map_providers[mapset_idx],new Lonlat(Number.parseFloat(lonStr!),Number.parseFloat(latStr!)));
+            this.current_map_provider_index=mapset_idx
             return true;
         } catch (error) {
             return false;
+        }
+    }
+    /**
+     * 現在表示中のマップを示すquery.updateByUrlで実行可能
+     */
+    public getQuerySuffix(lonlat?:Lonlat):string{
+        if(lonlat){
+            return `mapset=${this.current_mapset_name}&lon=${lonlat.lon}&lat=${lonlat.lat}${this.last_options?"&"+this.last_options.querySuffix:""}`
+        }else{
+            const c=this.current_result!.center
+            return `mapset=${this.current_mapset_name}&lon=${c.lon}&lat=${c.lat}${this.last_options?"&"+this.last_options.querySuffix:""}`    
         }
     }
     /**
@@ -627,7 +648,7 @@ export class ZoomInMapComponent extends SimpleMapComponent {
       
     public dispose() {
         super.dispose();
-        this.element.removeEventListener("wheel", this.#_wheelHandler);
+        this.parent_element.removeEventListener("wheel", this.#_wheelHandler);
     }
 }
 

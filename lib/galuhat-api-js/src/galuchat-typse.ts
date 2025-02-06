@@ -33,6 +33,10 @@ export class UnitInvs extends Point{}
  */
 export class Lonlat{
     constructor(readonly lon:number,readonly lat:number){}
+    isEqual(b:Lonlat):boolean{
+
+        return b&& b.lon==this.lon && b.lat==this.lat
+    }
 }
 /**
  * 経緯度座標系での範囲を格納する。
