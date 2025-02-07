@@ -1,6 +1,6 @@
 import {PointedEvent,ZoomInMapComponent} from "./mapcomponents.ts";
 import {WebApiMapProvider,MapOptions,} from "./mapprovider.ts";
-import {WebApiAacProvider,GaluchatAac} from "./geocodeprovider.ts";
+import {WebApiJccProvider,GaluchatJcc} from "./geocodeprovider.ts";
 import {Lonlat} from "./galuchat-typse.ts"
 import {debounce} from "./utils.ts"
 import './styles.less';
@@ -12,85 +12,90 @@ var mps=[
     new WebApiMapProvider("ma10000")
 ]
 
-class AacApp{
+class JccApp{
     static readonly TAG_INFOBOX =document.getElementById("infobox")! as HTMLInputElement;
     static readonly TAG_CODETEXT=document.getElementById("codetext")! as HTMLInputElement;
+    static readonly TAG_ZOOMIN =document.getElementById("zoom-in")! as HTMLInputElement;
+    static readonly TAG_ZOOMOUT=document.getElementById("zoom-out")! as HTMLInputElement;    
     readonly component:ZoomInMapComponent
-    current_aac:GaluchatAac|undefined
+    current_jcc:GaluchatJcc|undefined
     // public selected_aac:GaluchatAac
 
     /**
      * ヘッドラインを更新
-     * @param raac 
+     * @param rjcc 
      */
-    async updateHeaderLine(raac?:GaluchatAac){
-        const info_tag=AacApp.TAG_INFOBOX
-        const code_tag=AacApp.TAG_CODETEXT
+    async updateHeaderLine(rjcc?:GaluchatJcc){
+        const info_tag=JccApp.TAG_INFOBOX
+        const code_tag=JccApp.TAG_CODETEXT
         let info:string=""
-        if(raac==undefined){
+        if(rjcc==undefined){
             code_tag.innerText=`-`;
-            info=`行政区域を選択してください`;
-        }else if(raac.aacode==0){
+            info=`<div>行政区域を選択してください</div>`;
+        }else if(rjcc.aacode==0){
             code_tag.innerText=`-`;
-            info=`海上`;
-
-            //tag.value=""
-        }else if(raac.address==null){
-            code_tag.innerText=`${raac.aacode}`;
-            info=`所属不明地`;
+            info=`<div>海上</div>`;
+        }else if(rjcc.jcc==null){
+            code_tag.innerText=`-`;
+            info=`<div>所属不明地</div>`;
         }else{
-            code_tag.innerText=`${raac.aacode}`;
-            info=`${raac.address.prefecture} ${raac.address.city}`;
+            code_tag.innerText=`${rjcc.jcc.code}`;
+            info=
+`<ul style="list-style-type: none; padding: 0; margin: 0;text-align:center;">
+    <li style="font-size: 2em; font-weight: bold;line-height:1.1;white-space: nowrap;">${rjcc.jcc.name}</li>
+    <li style="font-size: 1.2em;line-height:1;line-height:1">${rjcc.jcc.name_en}</li>
+</ul>`;
         }
-        info_tag.innerHTML=`<span style='white-space: nowrap;'>${info}</span>`
+        info_tag.innerHTML=`${info}`
 
-        const child = info_tag.querySelector('span')!;
+        const child = info_tag.children.item(0) as HTMLElement;
         const parentWidth = info_tag.getBoundingClientRect().width;
         let childWidth = child.getBoundingClientRect().width+32;
         // 子要素の幅が親要素の幅を超えている場合、フォントサイズを調整する
         if (childWidth > parentWidth) {
           // 現在のフォントサイズを取得（単位は px と仮定）
           const computedStyle = window.getComputedStyle(child);
-          let fontSize = parseFloat(computedStyle.fontSize);
+          const fontSize = parseFloat(computedStyle.fontSize);
         
           // 子要素が収まるための縮小比率を算出
           const scaleFactor = parentWidth / childWidth;
-          if(scaleFactor>.5 || raac==undefined){
+          if(scaleFactor>.5 || rjcc==undefined){
             // 新しいフォントサイズを計算し、設定
             const newFontSize = fontSize * scaleFactor;
             child.style.fontSize = newFontSize + 'px';
           }else{
-            info=`<span style='white-space: nowrap;'>${raac.address.prefecture}</span><br/><span style='white-space: nowrap;'>${raac.address.city}</span>`;
-            info_tag.innerHTML=info
-            const childlen = info_tag.querySelectorAll('span')!;
-            // ループでフォントサイズを適用
-            childlen.forEach(span => {
-              span.style.fontSize = (fontSize * 0.5) + 'px';
-            });            
+            let texts=[]
+            for(let i of rjcc.jcc.name.split(" ")){
+                texts.push(`<span style="white-space: nowrap;">${i}</span>`)
+            }
+            info_tag.innerHTML=`<div style="font-size: 2em;text-align:center;">${texts.join(" ")}</div>`
+            const child = info_tag.children.item(0) as HTMLElement; 
+            child.style.fontSize=(fontSize) + 'px';          
+            console.log(child.style.fontSize);
           }
         }
     }
 
-    #last_aac_provider:WebApiAacProvider|undefined
+    #last_jcc_provider:WebApiJccProvider|undefined
     async updateCurrentCode(lonlat:Lonlat):Promise<void>{
-        if(!this.#last_aac_provider || this.#last_aac_provider.mapset_name!=this.component.current_mapset_name){
-            this.#last_aac_provider=new WebApiAacProvider(this.component.current_mapset_name)
+        if(!this.#last_jcc_provider || this.#last_jcc_provider.mapset_name!=this.component.current_mapset_name){
+            this.#last_jcc_provider=new WebApiJccProvider(this.component.current_mapset_name)
         }
-        this.current_aac=await this.#last_aac_provider!.getCode(lonlat)
-        await this.updateHeaderLine(this.current_aac)
+        this.current_jcc=await this.#last_jcc_provider!.getCode(lonlat)
+        await this.updateHeaderLine(this.current_jcc)
     }    
     public constructor(url:URL)
     {
         const map_element=document.getElementById("map")!
         this.component=new ZoomInMapComponent(map_element!,mps,0,false);
-        document.getElementById("zoom-in")?.addEventListener("click",()=>{this.component.zoomIn()})
-        document.getElementById("zoom-out")?.addEventListener("click",()=>{this.component.zoomOut()})
+        AacApp.TAG_ZOOMIN.addEventListener("click",()=>{this.component.zoomIn()})
+        AacApp.TAG_ZOOMOUT.addEventListener("click",()=>{this.component.zoomOut()})
         this.component.addEventListener("pointed",(e)=>{
             if(e instanceof PointedEvent){
                 this.updateCurrentCode(e.lonlat).then(()=>{
-                    if(this.current_aac){
+                    if(this.current_jcc){
                         const cp=this.component.current_result!.center
-                        const mop=this.current_aac.aacode!=0?new MapOptions([this.current_aac.aacode]):undefined
+                        const mop=this.current_jcc.aacode!=0?new MapOptions([this.current_jcc.aacode]):undefined
                         this.component.update(cp.lon,cp.lat,mop).then(()=>{
                             const params = new URLSearchParams(window.location.search);
                             params.set("key", "value");
@@ -123,7 +128,7 @@ class AacApp{
         })
         // リサイズ監視のセットアップ
         const dreize=debounce(()=>{
-            this.updateHeaderLine(this.current_aac)
+            this.updateHeaderLine(this.current_jcc)
             },100);
         
         const ro=new ResizeObserver(() => {
@@ -138,7 +143,7 @@ class AacApp{
 
 window.onload = function() {
     const urlObj = new URL(window.location.href);
-    new AacApp(urlObj)
+    new JccApp(urlObj)
 }
 
 

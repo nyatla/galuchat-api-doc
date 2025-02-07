@@ -386,7 +386,6 @@ export class ZoomInMapComponent extends SimpleMapComponent {
                                 if(idx==-1){
                                     break
                                 }
-                                console.log(`U:points:${this.points.length}`)
                                 points[idx].updateLastPos(e)
                                 const x=this.center.x-this.mtstart!.x
                                 const y=this.center.y-this.mtstart!.y
@@ -536,34 +535,45 @@ export class ZoomInMapComponent extends SimpleMapComponent {
         try {
             const params = new URLSearchParams(url.search);
             
-            const mapset = params.get("mapset");
-            const selected_aac = params.get("aac");
-            const latStr = params.get("lat");
-            const lonStr = params.get("lon");
+            const mapset:null|string = params.get("mapset");
+            const selected_aac:null|string = params.get("aac");
+            const latStr:null|string = params.get("lat");
+            const lonStr:null|string = params.get("lon");
 
             let mapset_idx=this.current_map_provider_index
-
             if(mapset){
                 const index = this.#map_providers.findIndex(obj => obj.name === mapset);
                 if(index<0){
+                    //不正なmapset
                     return false;
                 }
                 mapset_idx=index    
             }
-            let aac:number=NaN
-            
-            if (selected_aac) {
-                aac=parseInt(selected_aac);
+            let aac:number|undefined
+            if (selected_aac!=null){
+                aac=Number(selected_aac)
+                if(Number.isNaN(aac)) {
+                    //非整数
+                    return false
+                }
             }
-            if (Number.isNaN(latStr) || Number.isNaN(lonStr)) {
-                return false;
+            if((latStr==null)!=(lonStr==null)){
+                //指定不一致
+                return false
             }
-            this.last_options=!isNaN(aac)?new MapOptions([aac]):undefined
+            const lon=Number(lonStr)
+            const lat=Number(latStr)
+            if(latStr==null || lonStr==null || Number.isNaN(lon)||Number.isNaN(lat)){
+                //不正な数値セット
+                return false
+            }
+
+            this.last_options=aac?new MapOptions([aac]):undefined
             const index = this.#map_providers.findIndex(obj => obj.name === mapset);
             if(index<0){
                 return false;
             }
-            await this.switchMapProvider(this.#map_providers[mapset_idx],new Lonlat(Number.parseFloat(lonStr!),Number.parseFloat(latStr!)));
+            await this.switchMapProvider(this.#map_providers[mapset_idx],new Lonlat(lon,lat));
             this.current_map_provider_index=mapset_idx
             return true;
         } catch (error) {

@@ -87,7 +87,7 @@ export class WebApiJccProvider implements IReverseGeoCodeProvider<GaluchatJcc>
     #last_ret?:GaluchatJcc
 
     private readonly endpoint:string;
-    private readonly mapset:string
+    public readonly mapset_name:string
     // private readonly unit_invs:UnitInvs
  
     constructor(mapset_name:string,endpoint:string=DEFALUT_ENDPOINT){
@@ -95,11 +95,11 @@ export class WebApiJccProvider implements IReverseGeoCodeProvider<GaluchatJcc>
             throw new Error(`Invalid mapset name:${mapset_name}`);
         }
         this.endpoint=`${endpoint}/rjcc`;
-        this.mapset=mapset_name;
+        this.mapset_name=mapset_name;
         // this.unit_invs=MAPSET_TABLE[mapset_name];
     }    
     async getCode(lonlat:Lonlat):Promise<GaluchatJcc>{
-        const url = `${this.endpoint}?lon=${lonlat.lon}&lat=${lonlat.lat}&mapset=${this.mapset}`;
+        const url = `${this.endpoint}?lon=${lonlat.lon}&lat=${lonlat.lat}&mapset=${this.mapset_name}`;
         if(this.#last_url==url){
             console.log(`cached:${url}`);
             return this.#last_ret!

@@ -15,6 +15,8 @@ var mps=[
 class AacApp{
     static readonly TAG_INFOBOX =document.getElementById("infobox")! as HTMLInputElement;
     static readonly TAG_CODETEXT=document.getElementById("codetext")! as HTMLInputElement;
+    static readonly TAG_ZOOMIN =document.getElementById("zoom-in")! as HTMLInputElement;
+    static readonly TAG_ZOOMOUT=document.getElementById("zoom-out")! as HTMLInputElement;
     readonly component:ZoomInMapComponent
     current_aac:GaluchatAac|undefined
     // public selected_aac:GaluchatAac
@@ -83,8 +85,8 @@ class AacApp{
     {
         const map_element=document.getElementById("map")!
         this.component=new ZoomInMapComponent(map_element!,mps,0,false);
-        document.getElementById("zoom-in")?.addEventListener("click",()=>{this.component.zoomIn()})
-        document.getElementById("zoom-out")?.addEventListener("click",()=>{this.component.zoomOut()})
+        AacApp.TAG_ZOOMIN.addEventListener("click",()=>{this.component.zoomIn()})
+        AacApp.TAG_ZOOMOUT.addEventListener("click",()=>{this.component.zoomOut()})
         this.component.addEventListener("pointed",(e)=>{
             if(e instanceof PointedEvent){
                 this.updateCurrentCode(e.lonlat).then(()=>{
