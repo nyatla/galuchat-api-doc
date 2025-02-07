@@ -3,6 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+
+    <meta name="twitter:card" content="https://nyatla.jp/galuchat-api-js/jcc/" id="twitter-card">
+    <meta name="twitter:site" content="@nyatla" id="twitter-site">
+    <meta name="twitter:title" content="JARL市郡区番号マップ" id="twitter-title">
+    <meta name="twitter:description" content="JARL市郡区番号を地図から調べることができます。" id="twitter-description">
+    <meta name="twitter:image" content="https://nyatla.jp/galuchat-api-js/jcc/xs.png" id="twitter-image">
+  
+    <meta property="og:type" content="website" id="og-type">
+    <meta property="og:title" content="JARL市郡区番号マップ" id="og-title">
+    <meta property="og:description" content="JARL市郡区番号を地図から調べることができます。" id="og-description">
+    <meta property="og:image" content="https://nyatla.jp/galuchat-api-js/jcc/xl.png" id="og-image">
+    <meta property="og:url" content="https://nyatla.jp/galuchat-api-js/jcc/" id="og-url">
+
     <title>GaluchatMapビューアー</title>
     <!-- <link rel="stylesheet" href="/styles.css"> -->
     <script type="module" src="/src/app_jcc.ts"></script>  
@@ -17,13 +30,13 @@
 <body>
     <div id="loading">Now Loading...</div>
     <div id="container" style="visibility:hidden">
-        <header class="title" id="map_title">JARL市郡区コードマップ</header>
+        <header class="title" id="map_title">JARL市郡区番号マップ</header>
         <main class="map-container">
             <div class="map-wrapper">
                 <div class="map" id="map"></div>
                 <div id="headline">
                   <div id="codebox">
-                    <div>市郡区コード</div>
+                    <div>市郡区番号</div>
                     <div id="codetext">123456</div>
                   </div>
                   <div id="infobox">
@@ -32,10 +45,11 @@
                 </div>
 
                 <div id="controls">
+                    <button id="share">🔗</button>
                     <button id="zoom-in">＋</button>
                     <button id="zoom-out">－</button>
                 </div>
-              <div class="notice2">(c)2025 nyatla.jp</a>&nbsp;<a href="https://github.com/nyatla/galuchat-api-doc">Github</a>&nbsp;この地図は<a href="https://nlftp.mlit.go.jp/ksj/index.html">国土交通省国土数値情報</a>を加工・編集した情報を使用しています。</div>
+              <div class="notice2">(c)2025 nyatla</a>&nbsp;<a href="https://github.com/nyatla/galuchat-api-doc">Github</a>&nbsp;このサイトは<a href="https://nlftp.mlit.go.jp/ksj/index.html">国土交通省国土数値情報</a>を使用しています。</div>
             </div>
           </main>
       </div>

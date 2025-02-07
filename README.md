@@ -85,9 +85,10 @@ APIが生成する情報の元データは以下のものを使用していま�
 
 
 # デモ
+APIを利用したマップで地点を検索するSPAです。地図の生成から逆ジオコード迄を単独で提供します。
 
-1. [行政区域コードマップ](https://nyatla.jp/galuchat-api-js/)
-2. [JARL市郡区コードマップ](https://nyatla.jp/galuchat-api-js/index_jcc.html)
+1. [行政区域コードマップ](https://nyatla.jp/galuchat-api-js/aac/)
+2. [JARL市郡区コードマップ](https://nyatla.jp/galuchat-api-js/jcc/)
 
 ソースは[lib](./lib/galuchat-api-js)にあります。
 

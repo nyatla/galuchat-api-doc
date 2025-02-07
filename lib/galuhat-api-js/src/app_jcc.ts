@@ -2,6 +2,7 @@ import {PointedEvent,ZoomInMapComponent} from "./mapcomponents.ts";
 import {WebApiMapProvider,MapOptions,} from "./mapprovider.ts";
 import {WebApiJccProvider,GaluchatJcc} from "./geocodeprovider.ts";
 import {Lonlat} from "./galuchat-typse.ts"
+import {ShareDialog} from "./ui/ShareDialog.ts"
 import {debounce} from "./utils.ts"
 import './styles.less';
 
@@ -16,10 +17,11 @@ class JccApp{
     static readonly TAG_INFOBOX =document.getElementById("infobox")! as HTMLInputElement;
     static readonly TAG_CODETEXT=document.getElementById("codetext")! as HTMLInputElement;
     static readonly TAG_ZOOMIN =document.getElementById("zoom-in")! as HTMLInputElement;
-    static readonly TAG_ZOOMOUT=document.getElementById("zoom-out")! as HTMLInputElement;    
+    static readonly TAG_ZOOMOUT=document.getElementById("zoom-out")! as HTMLInputElement;
+    static readonly TAG_SHARE=document.getElementById("share")! as HTMLInputElement;    
     readonly component:ZoomInMapComponent
     current_jcc:GaluchatJcc|undefined
-    // public selected_aac:GaluchatAac
+    current_text_description:string=""
 
     /**
      * ヘッドラインを更新
@@ -29,15 +31,19 @@ class JccApp{
         const info_tag=JccApp.TAG_INFOBOX
         const code_tag=JccApp.TAG_CODETEXT
         let info:string=""
+        let ol_info:string=""
         if(rjcc==undefined){
             code_tag.innerText=`-`;
             info=`<div>行政区域を選択してください</div>`;
+            ol_info="未選択"
         }else if(rjcc.aacode==0){
             code_tag.innerText=`-`;
             info=`<div>海上</div>`;
+            ol_info="海上"
         }else if(rjcc.jcc==null){
             code_tag.innerText=`-`;
             info=`<div>所属不明地</div>`;
+            ol_info="所属不明"
         }else{
             code_tag.innerText=`${rjcc.jcc.code}`;
             info=
@@ -45,7 +51,9 @@ class JccApp{
     <li style="font-size: 2em; font-weight: bold;line-height:1.1;white-space: nowrap;">${rjcc.jcc.name}</li>
     <li style="font-size: 1.2em;line-height:1;line-height:1">${rjcc.jcc.name_en}</li>
 </ul>`;
+            ol_info=`JARL市郡区番号 ${rjcc.jcc.code},${rjcc.jcc.name}(${rjcc.jcc.name_en})`
         }
+        this.current_text_description=ol_info
         info_tag.innerHTML=`${info}`
 
         const child = info_tag.children.item(0) as HTMLElement;
@@ -88,8 +96,12 @@ class JccApp{
     {
         const map_element=document.getElementById("map")!
         this.component=new ZoomInMapComponent(map_element!,mps,0,false);
-        AacApp.TAG_ZOOMIN.addEventListener("click",()=>{this.component.zoomIn()})
-        AacApp.TAG_ZOOMOUT.addEventListener("click",()=>{this.component.zoomOut()})
+        JccApp.TAG_ZOOMIN.addEventListener("click",()=>{this.component.zoomIn()})
+        JccApp.TAG_ZOOMOUT.addEventListener("click",()=>{this.component.zoomOut()})
+        const share_dlg=new ShareDialog()
+        JccApp.TAG_SHARE.addEventListener("click",()=>{
+            share_dlg.showDialog(window.location.href,this.current_text_description,"JARL市郡区番号マップ")
+        });        
         this.component.addEventListener("pointed",(e)=>{
             if(e instanceof PointedEvent){
                 this.updateCurrentCode(e.lonlat).then(()=>{

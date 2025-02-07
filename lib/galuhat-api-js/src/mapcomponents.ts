@@ -2,7 +2,6 @@
 import {debounce} from "./utils"
 import {Lonlat,Point} from "./galuchat-typse"
 import {IMapProvider,GaluchatMap, MapOptions} from "./mapprovider"
-import {GaluchatAac,WebApiAacProvider,WebApiJccProvider,GaluchatJcc} from "./geocodeprovider"
 
 
 

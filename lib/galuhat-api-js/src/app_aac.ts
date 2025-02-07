@@ -2,6 +2,7 @@ import {PointedEvent,ZoomInMapComponent} from "./mapcomponents.ts";
 import {WebApiMapProvider,MapOptions,} from "./mapprovider.ts";
 import {WebApiAacProvider,GaluchatAac} from "./geocodeprovider.ts";
 import {Lonlat} from "./galuchat-typse.ts"
+import {ShareDialog} from "./ui/ShareDialog.ts"
 import {debounce} from "./utils.ts"
 import './styles.less';
 
@@ -17,8 +18,10 @@ class AacApp{
     static readonly TAG_CODETEXT=document.getElementById("codetext")! as HTMLInputElement;
     static readonly TAG_ZOOMIN =document.getElementById("zoom-in")! as HTMLInputElement;
     static readonly TAG_ZOOMOUT=document.getElementById("zoom-out")! as HTMLInputElement;
+    static readonly TAG_SHARE=document.getElementById("share")! as HTMLInputElement;
     readonly component:ZoomInMapComponent
     current_aac:GaluchatAac|undefined
+    current_text_description:string=""
     // public selected_aac:GaluchatAac
 
     /**
@@ -29,23 +32,27 @@ class AacApp{
         const info_tag=AacApp.TAG_INFOBOX
         const code_tag=AacApp.TAG_CODETEXT
         let info:string=""
+        let ol_info=""
         if(raac==undefined){
             code_tag.innerText=`-`;
             info=`行政区域を選択してください`;
+            ol_info=`未選択`
         }else if(raac.aacode==0){
             code_tag.innerText=`-`;
             info=`海上`;
-
+            ol_info=`海上`
             //tag.value=""
         }else if(raac.address==null){
             code_tag.innerText=`${raac.aacode}`;
             info=`所属不明地`;
+            ol_info=`行政区域コード:${raac.aacode},所属不明地`
         }else{
             code_tag.innerText=`${raac.aacode}`;
             info=`${raac.address.prefecture} ${raac.address.city}`;
+            ol_info=`${raac.aacode},${raac.address.prefecture} ${raac.address.city}`
         }
         info_tag.innerHTML=`<span style='white-space: nowrap;'>${info}</span>`
-
+        this.current_text_description=ol_info
         const child = info_tag.querySelector('span')!;
         const parentWidth = info_tag.getBoundingClientRect().width;
         let childWidth = child.getBoundingClientRect().width+32;
@@ -72,7 +79,6 @@ class AacApp{
           }
         }
     }
-
     #last_aac_provider:WebApiAacProvider|undefined
     async updateCurrentCode(lonlat:Lonlat):Promise<void>{
         if(!this.#last_aac_provider || this.#last_aac_provider.mapset_name!=this.component.current_mapset_name){
@@ -80,13 +86,18 @@ class AacApp{
         }
         this.current_aac=await this.#last_aac_provider!.getCode(lonlat)
         await this.updateHeaderLine(this.current_aac)
-    }    
+    }
+
     public constructor(url:URL)
     {
         const map_element=document.getElementById("map")!
         this.component=new ZoomInMapComponent(map_element!,mps,0,false);
         AacApp.TAG_ZOOMIN.addEventListener("click",()=>{this.component.zoomIn()})
         AacApp.TAG_ZOOMOUT.addEventListener("click",()=>{this.component.zoomOut()})
+        const share_dlg=new ShareDialog()
+        AacApp.TAG_SHARE.addEventListener("click",()=>{
+            share_dlg.showDialog(window.location.href,this.current_text_description,"行政区域コードマップ")
+        });
         this.component.addEventListener("pointed",(e)=>{
             if(e instanceof PointedEvent){
                 this.updateCurrentCode(e.lonlat).then(()=>{
@@ -111,8 +122,6 @@ class AacApp{
                 const DEFAULT_LONLA=new Lonlat(140.030,35.683)
                 this.component.update(DEFAULT_LONLA.lon,DEFAULT_LONLA.lat)
                 this.updateHeaderLine()
-                // AacApp.TAG_CODETEXT.innerText=""
-                // AacApp.TAG_INFOBOX.innerHTML=("<span>行政区域を選択してください</span>");
             }else{
                 if(this.component.getQuerySuffix().indexOf("aac=")!=-1){
                     this.updateCurrentCode(this.component.current_result!.center).then(()=>{
