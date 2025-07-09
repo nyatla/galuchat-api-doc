@@ -40,7 +40,7 @@ GatuchatAPIは、地図情報の参照APIを提供するシステムです。
 | [/rsarea](./apis/rsarea.md)  |GET| 経緯度からestat小区域コードと小区域名を返します。|
 | [/raacs](./apis/raacs.md) |POST| 経緯度リストから行政区域コードをと区域名のリストを返します。|
 | [/rjccs](./apis/rjccs.md) |POST| 経緯度リストからJARLコンテストコードと区域名のリストを返します。|
-| [/rsareas](./apis/rsareas.md) |POST| 経緯度リストからestat小区域コードと小区域名を返します。|
+| [/resareas](./apis/resareas.md) |POST| 経緯度リストからestat小区域コードと小区域名を返します。|
 
 
 ## マップ画像生成API

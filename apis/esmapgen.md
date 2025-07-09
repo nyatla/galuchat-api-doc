@@ -10,10 +10,10 @@
 ## Request
 
 ```
-GET https://galuchat.nyatla.jp/esmapgen?lat=35.68&lon=139.75&size=640,480&scode=1401014000
+GET https://galuchat.nyatla.jp/esmapgen?lat=35.68&lon=139.75&size=640,480&scode=13101014000
 ```
 #### link
-https://galuchat.nyatla.jp/esmapgen?lat=35.68&lon=139.75&size=640,480&sarea=1401014000
+https://galuchat.nyatla.jp/esmapgen?lat=35.68&lon=139.75&size=640,480&scode=13101014000
 
 
 ### URLパラメータ
