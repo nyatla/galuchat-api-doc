@@ -67,7 +67,7 @@ $curl -X POST https://galuchat.nyatla.jp/rjccs -H "Content-Type: application/jso
 ### レスポンスJSONフォーマット
 
 - address - 結果に含まれる行政区域コードの情報セットです。
-- aacodes - リクエストのpointsごとのJARLコンテストコードのリストです。
+- aacodes - リクエストのpointsごとの行政区域コードのリストです。
 
 ### 補足
 

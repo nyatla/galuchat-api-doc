@@ -63,7 +63,7 @@ $curl -X POST https://galuchat.nyatla.jp/raacs -H "Content-Type: application/jso
 ### レスポンスJSONフォーマット
 
 - address - 結果に含まれる行政区域コードの情報セットです。
-- aacodes - リクエストのpointsごとの行政区域コードのリストです。
+- aacodes - リクエストのpointsごとの都道府県名、市町村名を返します。
 
 ### 補足
 

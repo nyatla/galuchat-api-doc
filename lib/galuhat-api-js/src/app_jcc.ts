@@ -51,7 +51,7 @@ class JccApp{
     <li style="font-size: 2em; font-weight: bold;line-height:1.1;white-space: nowrap;">${rjcc.jcc.name}</li>
     <li style="font-size: 1.2em;line-height:1;line-height:1">${rjcc.jcc.name_en}</li>
 </ul>`;
-            ol_info=`JARL市郡区番号 ${rjcc.jcc.code},${rjcc.jcc.name}(${rjcc.jcc.name_en})`
+            ol_info=`${rjcc.jcc.code},${rjcc.jcc.name}(${rjcc.jcc.name_en})`
         }
         this.current_text_description=ol_info
         info_tag.innerHTML=`${info}`

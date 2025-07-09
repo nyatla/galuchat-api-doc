@@ -39,7 +39,7 @@ https://galuchat.nyatla.jp/raac?lat=35.7437485&lon=140.0269324
 ### レスポンスJSONフォーマット
 
 - aacode - 行政区域コードを返します。
-- address - 市町村名と県名を返します。
+- address - 都道府県名、市町村名を返します。
 
 ### 補足説明
 
