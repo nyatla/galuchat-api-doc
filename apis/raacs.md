@@ -17,8 +17,7 @@ $curl -X POST https://galuchat.nyatla.jp/raacs -H "Content-Type: application/jso
 
 |値名|M/O|[値型](../valuetype.md)|説明|
 |--|--|--|--|
-|mapset|O|TEXT|使用するマップセットの名前を指定します。省略時はデフォルト値を使います。<br/>値の詳細は、[現在のサーバー設定](../current_setting.md) を参照してください。|
-
+|mapset|O|TEXT|使用するマップセットの名前を指定します。省略時はデフォルト値を使います。AACODEタイプのマップの未使用可能です。<br/>値の詳細は、[現在のサーバー設定](../current_setting.md) を参照してください。|
 
 
 ### リクエストJSONフォーマット

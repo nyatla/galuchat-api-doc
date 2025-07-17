@@ -19,7 +19,7 @@ https://galuchat.nyatla.jp/raac?lat=35.7437485&lon=140.0269324
 |--|--|--|--|
 |lat|M|LATVALUE|緯度を指定します。|
 |lat|M|LATVALUE|経度を指定します。|
-|mapset|O|TEXT|使用するマップセットの名前を指定します。省略時はデフォルト値を使います。<br/>値の詳細は、[現在のサーバー設定](../current_setting.md) を参照してください。|
+|mapset|O|TEXT|使用するマップセットの名前を指定します。省略時はデフォルト値を使います。AACODEタイプのマップの未使用可能です。<br/>値の詳細は、[現在のサーバー設定](../current_setting.md) を参照してください。|
 
 
 

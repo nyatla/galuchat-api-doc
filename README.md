@@ -37,7 +37,7 @@ GatuchatAPIは、地図情報の参照APIを提供するシステムです。
 | -------------|-| ------------- |
 | [/raac](./apis/racc.md)  |GET| 経緯度から行政区域コードと行政区名を返します。|
 | [/rjcc](./apis/rjcc.md)  |GET| 経緯度からJARLコンテストコードと区域名を返します。|
-| [/rsarea](./apis/rsarea.md)  |GET| 経緯度からestat小区域コードと小区域名を返します。|
+| [/resarea](./apis/resarea.md)  |GET| 経緯度からestat小区域コードと小区域名を返します。|
 | [/raacs](./apis/raacs.md) |POST| 経緯度リストから行政区域コードをと区域名のリストを返します。|
 | [/rjccs](./apis/rjccs.md) |POST| 経緯度リストからJARLコンテストコードと区域名のリストを返します。|
 | [/resareas](./apis/resareas.md) |POST| 経緯度リストからestat小区域コードと小区域名を返します。|
@@ -53,13 +53,6 @@ GatuchatAPIは、地図情報の参照APIを提供するシステムです。
 
 
 
-## RawLevelAPI
-RawlevelAPIは開発用です。アプリケーションは使用すべきではありません。
-
-| エンドポイント|メソッド |機能|
-| -------------|-| ------------- |
-| /getpoint |GET| 座標に対応する値を返します。  |
-| /getrect |GET| 起点及びサイズで定義される領域内にある座標の値を、PNG形式に格納して返します。 |
 
 
 ## API共通仕様
