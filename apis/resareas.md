@@ -64,19 +64,19 @@ $curl -X POST https://galuchat.nyatla.jp/resareas -H "Content-Type: application/
 
 ### レスポンスJSONフォーマット
 
-- address - 結果に含まれる小区域コードの情報セットです。
+- addresses - 結果に含まれる小区域コードの情報セットです。
 - scodes - リクエストのpointsごとの都道府県名、市町村名、小区域名を返します。
 
 ### 補足
 
-addressには、有効なscodesの値が全て含まれています。  scodesはestat小区域コードのリストです。pointsに設定した順に格納されています。該当する行政区域コードが見つからなかった場合は、その項目はnullになります。  
+addressesには、有効なscodesの値が全て含まれています。  scodesはestat小区域コードのリストです。pointsに設定した順に格納されています。該当する行政区域コードが見つからなかった場合は、その項目はnullになります。  
 
 結果を行政区域コードのリストに変換するには、scodesをキーにadderssesを取得してください。
 
 #### Javascript
 ```
 //responseにjsonが格納されているとして
-const result = response.aacodes.map(code => ({
+const result = response.scodes.map(code => ({
   scodes: code,
   address: response.addresses[code] || null
 }));

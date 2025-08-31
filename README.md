@@ -5,7 +5,7 @@ GatuchatAPIは、地図情報の参照APIを提供するシステムです。
 以下の機能を提供します。
 
 - 行政区域コードの逆ジオコーディング機能
-- JARLコンテストコードの逆ジオコーディング機能
+- JARL市郡区コードの逆ジオコーディング機能
 - EStat小区域コード(町丁・字等境界データ)の逆ジオコーディング機能
 - 簡易的な行政区域地図の生成機能
 - RawLevelAPI呼び出し機能
@@ -36,10 +36,10 @@ GatuchatAPIは、地図情報の参照APIを提供するシステムです。
 | エンドポイント|メソッド |機能|
 | -------------|-| ------------- |
 | [/raac](./apis/racc.md)  |GET| 経緯度から行政区域コードと行政区名を返します。|
-| [/rjcc](./apis/rjcc.md)  |GET| 経緯度からJARLコンテストコードと区域名を返します。|
+| [/rjcc](./apis/rjcc.md)  |GET| 経緯度からJARL市郡区コードと区域名を返します。|
 | [/resarea](./apis/resarea.md)  |GET| 経緯度からestat小区域コードと小区域名を返します。|
 | [/raacs](./apis/raacs.md) |POST| 経緯度リストから行政区域コードをと区域名のリストを返します。|
-| [/rjccs](./apis/rjccs.md) |POST| 経緯度リストからJARLコンテストコードと区域名のリストを返します。|
+| [/rjccs](./apis/rjccs.md) |POST| 経緯度リストからJARL市郡区コードと区域名のリストを返します。|
 | [/resareas](./apis/resareas.md) |POST| 経緯度リストからestat小区域コードと小区域名を返します。|
 
 
@@ -98,7 +98,7 @@ APIを利用したマップで地点を検索するSPAです。地図の生成�
 
 1. 行政区域コード  
    https://nlftp.mlit.go.jp/ksj/gml/codelist/AdminiBoundary_CD.xlsx
-2. JARLコンテストコード  
+2. JARL市郡区コード  
    https://www.jarl.org/Japanese/A_Shiryo/A-2_jcc-jcg/jcc.htm
 
 
