@@ -71,13 +71,13 @@ $curl -X POST https://galuchat.nyatla.jp/resareas -H "Content-Type: application/
 
 addressesには、有効なscodesの値が全て含まれています。  scodesはestat小区域コードのリストです。pointsに設定した順に格納されています。該当する行政区域コードが見つからなかった場合は、その項目はnullになります。  
 
-結果を行政区域コードのリストに変換するには、scodesをキーにadderssesを取得してください。
+結果を行政区域コードのリストに変換するには、scodesをキーにaddrssesを取得してください。
 
 #### Javascript
 ```
 //responseにjsonが格納されているとして
 const result = response.scodes.map(code => ({
-  scodes: code,
+  scode: code,
   address: response.addresses[code] || null
 }));
 
@@ -85,8 +85,8 @@ console.log(result);
 /*
 出力:
 [
-  { scodes: 1621001000, address: { city: '一宮町', prefecture: '千葉県',s_area: '一宮' } },
-  { scodes: 1404051006, address: { city: '船橋市', prefecture: '千葉県',s_area: '金杉六丁目' } }
+  { scode: 1621001000, address: { city: '一宮町', prefecture: '千葉県',s_area: '一宮' } },
+  { scode: 1404051006, address: { city: '船橋市', prefecture: '千葉県',s_area: '金杉六丁目' } }
 ]
 */
 ```
@@ -96,7 +96,7 @@ console.log(result);
 # responseにjsonが格納されているとして
 result = [
     {
-        "scodes": code,
+        "scode": code,
         "address": response["addresses"].get(str(code), None)
     }
     for code in response["scodes"]
@@ -106,8 +106,8 @@ print(result)
 """
 出力:
 [
-    {'scodes': 1621001000, 'address': {'city': '一宮町', 'prefecture': '千葉県',s_area: '一宮'}},
-    {'scodes': 1404051006, 'address': {'city': '船橋市', 'prefecture': '千葉県',s_area: '金杉六丁目'}}
+    {'scode': 1621001000, 'address': {'city': '一宮町', 'prefecture': '千葉県',s_area: '一宮'}},
+    {'scode': 1404051006, 'address': {'city': '船橋市', 'prefecture': '千葉県',s_area: '金杉六丁目'}}
 ]
 """
 ```

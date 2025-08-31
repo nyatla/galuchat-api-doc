@@ -68,7 +68,7 @@ $curl -X POST https://galuchat.nyatla.jp/raacs -H "Content-Type: application/jso
 
 addressesには、有効なaacodesの値が全て含まれています。  aacodesは行政区域コードのリストです。pointsに設定した順に格納されています。該当する行政区域コードが見つからなかった場合は、その項目はnullになります。  
 
-結果を行政区域コードのリストに変換するには、aacodesをキーにadderssesを取得してください。
+結果を行政区域コードのリストに変換するには、aacodesをキーにaddrssesを取得してください。
 
 #### Javascript
 ```
