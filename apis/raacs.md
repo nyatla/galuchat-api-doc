@@ -1,4 +1,4 @@
-# /rjccs
+# /raacs
 
 複数の経度と緯度について、その地点の行政区域情報を返します。
 
@@ -6,7 +6,7 @@
 ## Request
 
 ```
-POST https://galuchat.nyatla.jp/rjccs
+POST https://galuchat.nyatla.jp/raacs
 ```
 
 #### curl
